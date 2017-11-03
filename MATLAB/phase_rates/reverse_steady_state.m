@@ -1,12 +1,13 @@
-function [CTM, AT] = reverse_steady_state(dist_0, dist_end, Time)
+function [CTM, AT] = reverse_steady_state(dist_0, dist_end, Time0, Time)
+% [CTM, AT] = reverse_steady_state(dist_0, dist_end, Time0, Time)
 % dist_* = [tot live, tot dead, G1, S, G2, M]
 %
 % AT estimated as the same death rate for all phases
 
-div_rate = (1 + max(0,dist_end(2)-dist_0(2))/(dist_end(1)-dist_0(1)) )*log(dist_end(1)./dist_0(1))/Time;
+div_rate = (1 + max(0,dist_end(2)-dist_0(2))/(dist_end(1)-dist_0(1)) )*log(dist_end(1)./dist_0(1))/(Time - Time0);
 % needs to be checked
 div_rate = max(0,div_rate);
-death_rate = max(0, ((dist_end(2)-dist_0(2))/(dist_end(1)-dist_0(1)) )*log(dist_end(1)./dist_0(1)))/Time;
+death_rate = max(0, ((dist_end(2)-dist_0(2))/(dist_end(1)-dist_0(1)) )*log(dist_end(1)./dist_0(1)))/(Time - Time0);
 
 % split the death rate among all phases
 

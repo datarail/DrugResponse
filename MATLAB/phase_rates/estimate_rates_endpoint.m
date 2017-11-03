@@ -1,4 +1,5 @@
-function [est_k, std_k, opt_DrugRates, min_err, exitflag] = estimate_rates_endpoint(dist_trt, dist_0, dist_ctrl, Time, Nrep)
+function [est_k, std_k, opt_DrugRates, min_err, exitflag] = estimate_rates_endpoint(dist_trt, dist_0, dist_ctrl, Time0, Time, Nrep)
+% [est_k, std_k, opt_DrugRates, min_err, exitflag] = estimate_rates_endpoint(dist_trt, dist_0, dist_ctrl, Time0, Time, Nrep)
 % dist_* = [Times] X [tot live, tot dead, G1, S, G2, M]
 
 assert(all(size(dist_trt)==[length(Time) 6]))
@@ -28,10 +29,10 @@ DrugRates0 = NaN(2,4,length(Time));
 est_DrugRates = NaN(2,4,length(Time));
 
 for i = 1:length(Time)
-    [est_CTM0, est_AT0] = reverse_steady_state(dist_0, dist_ctrl(i,:), Time(i));
+    [est_CTM0, est_AT0] = reverse_steady_state(dist_0, dist_ctrl(i,:), Time0, Time(i));
     DrugRates0(:,:,i) = Rates_from_CTM_AT(est_CTM0, est_AT0);
     
-    [est_CTM, est_AT] = reverse_steady_state(dist_0, dist_trt(i,:), Time(i));
+    [est_CTM, est_AT] = reverse_steady_state(dist_0, dist_trt(i,:), Time0, Time(i));
     est_DrugRates(:,:,i) = Rates_from_CTM_AT(est_CTM, est_AT);
 end
 
@@ -46,7 +47,7 @@ min_err = NaN(1,Nrep);
 exitflag = NaN(1,Nrep);
 parfor i = 1:Nrep
     [ks,min_err(i),exitflag(i)] = rate_optimization_endpoint(...
-        dist_trt, dist_0, est_DrugRates, DrugRates0, Time, i);
+        dist_trt, dist_0, est_DrugRates, DrugRates0, Time0, Time, i);
     opt_DrugRates(i,:) = [ks(1,:) ks(2,:)];
 end
 

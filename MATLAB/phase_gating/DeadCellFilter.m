@@ -86,8 +86,8 @@ if p.plotting
 %     currfig = gcf;
     
     plot_pos = [
-        .07 .6 .4 .37;
-        .57 .6 .4 .37;
+        .07 .64 .4 .35;
+        .57 .64 .4 .35;
         .15 .05 .4 .4
         .6 .15 .3 .3];
     
@@ -263,22 +263,22 @@ if p.interactive
     if useDNA
         minDNA = uicontrol('style', 'slider', 'callback', {@setGates,3});
         minDNA.Units = 'normalized';
-        minDNA.Position = [plot_pos(2,1)-15/figpos(3) plot_pos(2,2)-.03 plot_pos(2,3)+30/figpos(3) .03];
+        minDNA.Position = [plot_pos(2,1)-15/figpos(3) plot_pos(2,2)-.04 plot_pos(2,3)+30/figpos(3) .04];
         minDNA.Value = (DNAGates(1)-DNAlims(1))/diff(DNAlims);
         
         lowDNA = uicontrol('style', 'slider', 'callback', {@setGates,4});
         lowDNA.Units = 'normalized';
-        lowDNA.Position = [plot_pos(2,1)-15/figpos(3) plot_pos(2,2)-.06 plot_pos(2,3)+30/figpos(3) .03];
+        lowDNA.Position = [plot_pos(2,1)-15/figpos(3) plot_pos(2,2)-.08 plot_pos(2,3)+30/figpos(3) .04];
         lowDNA.Value = (DNAGates(2)-DNAlims(1))/diff(DNAlims);
         
         highDNA = uicontrol('style', 'slider', 'callback', {@setGates,5});
         highDNA.Units = 'normalized';
-        highDNA.Position = [plot_pos(2,1)-15/figpos(3) plot_pos(2,2)-.09 plot_pos(2,3)+30/figpos(3) .03];
+        highDNA.Position = [plot_pos(2,1)-15/figpos(3) plot_pos(2,2)-.12 plot_pos(2,3)+30/figpos(3) .04];
         highDNA.Value = (DNAGates(3)-DNAlims(1))/diff(DNAlims);
         
         maxDNA = uicontrol('style', 'slider', 'callback', {@setGates,6});
         maxDNA.Units = 'normalized';
-        maxDNA.Position = [plot_pos(2,1)-15/figpos(3) plot_pos(2,2)-.12 plot_pos(2,3)+30/figpos(3) .03];
+        maxDNA.Position = [plot_pos(2,1)-15/figpos(3) plot_pos(2,2)-.16 plot_pos(2,3)+30/figpos(3) .04];
         maxDNA.Value = (DNAGates(4)-DNAlims(1))/diff(DNAlims);
     end
     
@@ -369,6 +369,8 @@ end
         maxLDR.Visible = 'off';
         if useDNA
             minDNA.Visible = 'off';
+            lowDNA.Visible = 'off';
+            highDNA.Visible = 'off';
             maxDNA.Visible = 'off';
         end
         set(src, 'backgroundcolor', 'g')

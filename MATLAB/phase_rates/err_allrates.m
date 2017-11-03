@@ -1,5 +1,5 @@
 
-function [err_tot, err_dist] = err_allrates(dist_trt, dist_0, allRates, DrugRates0, Time)
+function [err_tot, err_dist] = err_allrates(dist_trt, dist_0, allRates, DrugRates0, Time0, Time)
 % dist_* = [tot live, tot dead, G1, S, G2, M]
 %
 
@@ -12,7 +12,7 @@ end
 % error for the distribution and population size
 options = odeset('nonnegative', 1:6, 'abstol',1e-3, 'jacobian', [CTM zeros(4); AT zeros(4)]);
 [t, test_dist_trt] = ode23(@(t,y)cell_cycle_ODE_with_dead(t,y,CTM,AT), ...
-    [0 ToRow(Time)], [dist_0(3:end)'; ones(4,1)*dist_0(2)/4], options);
+    [Time0 ToRow(Time)], [dist_0(3:end)'; ones(4,1)*dist_0(2)/4], options);
 test_dist_trt = test_dist_trt(ismember(t, Time),:);
 test_dist_trt = [sum(test_dist_trt(:,1:4),2) sum(test_dist_trt(:,5:8),2) test_dist_trt(:,1:4)];
 
