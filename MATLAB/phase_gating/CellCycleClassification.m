@@ -25,7 +25,8 @@ function ClassifiedCells = CellCycleClassification(t_SingleCelldata, SingleCelld
 %
 %% assign inputs and prepare tests
 
-assert(height(t_SingleCelldata)==length(SingleCelldata))
+assert(height(t_SingleCelldata)==length(SingleCelldata), 'Inconcistent input')
+assert(~isempty(SingleCelldata), 'Empty input')
 
 p = parseCellCycleInputs(varargin{:});
 
@@ -52,7 +53,7 @@ plotResults = struct('LDR', {SingleCelldata.(p.Channelnames.LDR)}', ...
 
 % get all different conditions
 default_metadata = {'CellLine' 'DrugName' 'Conc' 'DrugName2' 'Conc2' 'Time'};
-t_groups = unique(t_SingleCelldata(:,unique([{'Barcode'} p.ConditionKeys],'stable')));
+t_groups = unique(t_SingleCelldata(:,unique([{'Barcode' 'CellLine'} p.ConditionKeys],'stable')));
 
 % start the result report
 t_results = [t_SingleCelldata(:,unique([ ...

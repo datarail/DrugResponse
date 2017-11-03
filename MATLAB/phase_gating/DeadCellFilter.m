@@ -122,7 +122,7 @@ if useDNA
         DNAlims = quantile(logDNA, [5e-3 .995])+[-1 1]*2.5*diff(p.xDNA(1:2)); end
     if p.plotting
         % plot original data
-        get_newaxes(plot_pos(2,:),1)
+        ax = get_newaxes(plot_pos(2,:),1);
         plot(p.xDNA, f2, '-k')
         xlim(DNAlims)
         set(gca,'xtick',[],'ytick',[])
@@ -135,8 +135,10 @@ if useDNA
     
     [pks, idx] = findpeaks(f2s, 'sortstr', 'descend');
     idx = idx(pks>max(pks/10)); % remove lesser peaks
+    pks = pks(pks>max(pks/10)); pks = pks(1:min(4,length(pks)));% remove lesser peaks
     DNAPks = p.xDNA(idx(1:min(4,length(idx)))); % take the 4 highest peaks 
-    DNAdensity = arrayfun(@(x) mean(logDNA>(x-.2*log10(2)) & logDNA<(x+.8*log10(2))), DNAPks);
+    DNAdensity = arrayfun(@(x) mean(logDNA>(x-.2*log10(2)) & logDNA<(x+1.2*log10(2))), ...
+        DNAPks) + pks;
     
     % find the DNA peak for G1
     if length(DNAPks)>1
@@ -145,10 +147,13 @@ if useDNA
             % input matching G1 peak
             DNAPks = DNAPks(argmin(abs(DNAPks-p.DNApks(1))));
         elseif ~isnan(p.DNApks(2))
-            % input matching S peak
+            % input matching G2 peak
             DNAPks = max(DNAPks(DNAPks<p.DNApks(2)));
+        elseif length(DNAPks)==2
+            DNAPks = min(DNAPks);
         else
-            % take the peak with lowest DNA (most likely case in doubt)
+            % take the peak with the highest density 
+            %   (most likely case in doubt)
             DNAPks = DNAPks(argmax(DNAdensity));
         end
     end
@@ -174,8 +179,8 @@ if useDNA
         if length(hDNAPks)>1
             % more than one candidate
             if ~isnan(p.DNApks(2))
-                % 2D analysis matching G2 peak
-                hDNAPks = hDNAPks(argmin(abs(hDNAPks-PhasesCandidates(3,1))));
+                % matching G2 peak
+                hDNAPks = hDNAPks(argmin(abs(hDNAPks-p.DNApks(2))));
             else
                 % take the peak closest to a 2-fold(most likely case in doubt)
                 hDNAPks = hDNAPks(argmin(abs(hDNAPks-DNAPks(1)-log10(2))));
@@ -197,13 +202,16 @@ if useDNA
     
     if any(isnan(p.DNAGates))
         % define areas
-        DNAGates = DNAPks([1 1 2 2]) + [-1.5 -.9 1.2 2.2]*diff(DNAPks);
+        DNAGates = DNAPks([1 1 2 2]) + [-1.5 -.9 1.3 2.2]*diff(DNAPks);
     else
         DNAGates = p.DNAGates;
     end
+    DNAlims = [min([DNAlims DNAGates-.1]) max([DNAlims DNAGates+.1])];
     
     
     if p.plotting
+        xlim(ax, DNAlims)
+        
         plot(DNAGates([1 1 2 2]), [0 max(f2)*[1.02 1.02] 0], '--', 'color', [.6 .9 .1]);
         pltgt2 = plot(DNAGates([1 1 4 4]), [0 max(f2)*[1.02 1.02] 0], '-r');
         pltgt2b = plot(DNAGates([2 2 3 3]), [0 max(f2)*[1.02 1.02] 0], '-r', 'linewidth', 2);
@@ -255,13 +263,23 @@ if p.interactive
     if useDNA
         minDNA = uicontrol('style', 'slider', 'callback', {@setGates,3});
         minDNA.Units = 'normalized';
-        minDNA.Position = [plot_pos(2,1)-15/figpos(3) plot_pos(2,2)-.04 plot_pos(2,3)+30/figpos(3) .03];
+        minDNA.Position = [plot_pos(2,1)-15/figpos(3) plot_pos(2,2)-.03 plot_pos(2,3)+30/figpos(3) .03];
         minDNA.Value = (DNAGates(1)-DNAlims(1))/diff(DNAlims);
         
-        maxDNA = uicontrol('style', 'slider', 'callback', {@setGates,4});
+        lowDNA = uicontrol('style', 'slider', 'callback', {@setGates,4});
+        lowDNA.Units = 'normalized';
+        lowDNA.Position = [plot_pos(2,1)-15/figpos(3) plot_pos(2,2)-.06 plot_pos(2,3)+30/figpos(3) .03];
+        lowDNA.Value = (DNAGates(2)-DNAlims(1))/diff(DNAlims);
+        
+        highDNA = uicontrol('style', 'slider', 'callback', {@setGates,5});
+        highDNA.Units = 'normalized';
+        highDNA.Position = [plot_pos(2,1)-15/figpos(3) plot_pos(2,2)-.09 plot_pos(2,3)+30/figpos(3) .03];
+        highDNA.Value = (DNAGates(3)-DNAlims(1))/diff(DNAlims);
+        
+        maxDNA = uicontrol('style', 'slider', 'callback', {@setGates,6});
         maxDNA.Units = 'normalized';
-        maxDNA.Position = [plot_pos(2,1)-15/figpos(3) plot_pos(2,2)-.08 plot_pos(2,3)+30/figpos(3) .03];
-        maxDNA.Value = (DNAGates(2)-DNAlims(1))/diff(DNAlims);
+        maxDNA.Position = [plot_pos(2,1)-15/figpos(3) plot_pos(2,2)-.12 plot_pos(2,3)+30/figpos(3) .03];
+        maxDNA.Value = (DNAGates(4)-DNAlims(1))/diff(DNAlims);
     end
     
     approve = uicontrol('style', 'pushbutton');
@@ -296,13 +314,15 @@ end
         else % DNA gates
             DNAGates(x-2) = (diff(DNAlims)*src.Value)+DNAlims(1);
             % check for proper ordering
-            for i=1:3
-                if DNAGates(i)>DNAGates(i+1)
-                    DNAGates(i)=DNAGates(i+1);
-                    minDNA.Value = (DNAGates(i+1)-DNAlims(1))/diff(DNAlims);
-                    maxDNA.Value = (DNAGates(i+1)-DNAlims(1))/diff(DNAlims);
+            for ij=1:3
+                if DNAGates(ij)>DNAGates(ij+1)
+                    DNAGates(ij)=DNAGates(ij+1);
                 end
             end
+            minDNA.Value = (DNAGates(1)-DNAlims(1))/diff(DNAlims);
+            lowDNA.Value = (DNAGates(2)-DNAlims(1))/diff(DNAlims);
+            highDNA.Value = (DNAGates(3)-DNAlims(1))/diff(DNAlims);
+            maxDNA.Value = (DNAGates(4)-DNAlims(1))/diff(DNAlims);
         end
         
         set(pltgt1, 'XData', [LDRGates(2) max(LDRGates(1), min(p.xLDR))*[1 1] [1 1]*LDRGates(2)])

@@ -61,7 +61,7 @@ e = -200:4e3;
 f = ksdensity(EdU, e);
 % find the EdU peak for G1/G2
 [~,pk,wdth]=findpeaks(f,'npeaks',2,'widthreference','halfprom',...
-    'sortstr','descend','minpeakheight', 1e-3);
+    'sortstr','descend','minpeakheight', max(f)/10);
 wdth = wdth(argmin(pk));
 pk = e(ceil(min(pk)));
 
@@ -139,7 +139,7 @@ end
 % first pass at the finding peaks by combining DNA and EdU channels
 
 
-% coarser binning
+
 xDNA2 = p.xDNA;
 xEdU2 = p.xEdU;
 nbins = [length(xDNA2) length(xEdU2)]-1;
@@ -215,22 +215,28 @@ if any(PksCandidates(:,2)-min(PksCandidates(:,2))>EdUshift & ...
         PksCandidates(:,2)>(minEdU+.2*EdUshift))
     % there is enough differences on EdU to expect a S phase
     
-    % get the S phase peak as the one with max EdU
-    PhasesCandidates(2,:) = PksCandidates(argmax(PksCandidates(:,2)),[1 2]);
+    % get the S phase peak as the one with high EdU and high density within 1.5*log10(2)
+    PhasesCandidates(2,:) = PksCandidates(argmax(...
+        (PksCandidates(:,2)-min(PksCandidates(:,2))>EdUshift & PksCandidates(:,2)>(minEdU+.2*EdUshift))...
+        .*(sum((abs(repmat(PksCandidates(:,1), 1, size(PksCandidates,1))-...
+        repmat(PksCandidates(:,1), 1, size(PksCandidates,1))')<(log10(2)*.75)).*...
+        (repmat(PksCandidates(:,3),1,size(PksCandidates,1))),1)'+PksCandidates(:,3))),[1 2]);
     
     % find the G1 peak now
-    temp = PksCandidates(PksCandidates(:,1)<PhasesCandidates(2,1)+log10(2)/5 & ...
-        PksCandidates(:,1)>PhasesCandidates(2,1)-2.5*log10(2) & ...
-        PksCandidates(:,2)<PhasesCandidates(2,2)-EdUshift, [1 2]);
+    temp = PksCandidates(PksCandidates(:,1)<(PhasesCandidates(2,1)+log10(2)*.05) & ...
+        PksCandidates(:,1)>(PhasesCandidates(2,1)-.75*log10(2)) & ...
+        PksCandidates(:,2)<PhasesCandidates(2,2)-EdUshift, :);
     if ~isempty(temp) % there is a likely G1 peak
-        % assign the G1 peak as the one closest to the S peak on the DNA axis
-        PhasesCandidates(1,:) = temp(argmax(PhasesCandidates(2,1)-temp(:,1)),:);
+        % assign the G1 peak as the one close to the S peak on the DNA axis
+        % with high density
+        PhasesCandidates(1,:) = temp(argmax(temp(:,3)),[1 2]);
     end
     % assign the G2 peak as the one closest to the S peak on the DNA axis
     temp = PksCandidates(PksCandidates(:,1)>nanmean(PhasesCandidates(1:2,1)) & ...
-        PksCandidates(:,2)<PhasesCandidates(2,2)-EdUshift, [1 2]);
+        PksCandidates(:,1)<nanmean(PhasesCandidates(1:2,1))+log10(2) & ...
+        PksCandidates(:,2)<PhasesCandidates(2,2)-EdUshift, :);
     if ~isempty(temp) % there is a likely G2 peak
-        PhasesCandidates(3,:) = temp(argmin(temp(:,1)),:);
+        PhasesCandidates(3,:) = temp(argmax(temp(:,3)),[1 2]);
     end
     
 else
@@ -338,7 +344,7 @@ if p.plotting, plot(p.xEdU, f, '--'), end
 [EdUint, idx] = findpeaks(smooth(f,p.nsmooth),'sortstr','descend','npeaks',2);
 
 if ~isempty(idx)
-    % take the highest peak or lowest EdU level
+    % take the highest peak or lowest EdU level (G1 + G2)
     idx = idx(EdUint>.3*max(EdUint));
     EdUPks = p.xEdU(idx(argmin(idx)));
 else
@@ -366,8 +372,12 @@ if any(hE)
     
     % use the distribution to find the minimum of EdU as cutoff (between peaks)
     f = ksdensity(logEdU,p.xEdU);
-    EdUcutoff = p.xEdU(argmin(smooth(f',p.nsmooth)' + ...
-        (p.xEdU<EdUPks(1) | p.xEdU>EdUPks(2))));
+    [~,idx] = findpeaks(-f,'sortstr','descend');
+    EdUcutoff = p.xEdU(idx(find(p.xEdU(idx)>EdUPks(1) & p.xEdU(idx)<EdUPks(2),1,'first')));
+    if isempty(EdUcutoff)
+        EdUcutoff = p.xEdU(argmin(smooth(f',p.nsmooth)' + ...
+            (p.xEdU<EdUPks(1) | p.xEdU>EdUPks(2))));
+    end
     EdUlims = [p.xEdU(3) min(EdUPks(2)+(EdUPks(2)-EdUcutoff), p.xEdU(end-1))];
     
     if p.plotting
@@ -455,13 +465,13 @@ if any(hD)
     end
     
     % find the split between G1 and G2
-    f = ksdensity(logDNA,p.xDNA);
+    f = ksdensity(logDNA(logEdU<EdUGates(1)),p.xDNA);
     [~, idx] = findpeaks(-smooth(f,p.nsmooth), 'sortstr', 'descend');
     DNAcutoff = p.xDNA(idx(p.xDNA(idx)>DNAPks(1) & p.xDNA(idx)<DNAPks(3)));
     
     if isempty(DNAcutoff)
         % no good candidate; set by default
-        DNAcutoff = DNAPks(2);
+        DNAcutoff = min(max(DNAPks(2),DNAPks(1)+.02), DNAPks(3)-.02);
     elseif length(DNAcutoff)>1
         DNAcutoff = DNAcutoff(1);
     end
@@ -481,18 +491,22 @@ end
 hG1 = abs(logDNA-DNAPks(1))<.3*log10(2) & logEdU<EdUGates(1);
 if sum(hG1)>10
     NormFitG1 = fitdist(logDNA(hG1), 'Normal');
+    G1minwidth = max(NormFitG1.icdf(.9)-NormFitG1.icdf(.1),.05);
     G1lim = min(NormFitG1.icdf(.99), DNAcutoff-.1*log10(2));
 else
     G1lim = min(DNAcutoff-.1*log10(2), mean([DNAcutoff, DNAPks(1)]));
+    G1minwidth = .05;
 end
 
 hG2 = abs(logDNA-DNAPks(3))<.3*log10(2) & logEdU<EdUGates(1);
 if sum(hG2)>10
-    NormFit = fitdist(logDNA(hG2), 'Normal');
-    G2lim = max(NormFit.icdf(.01), DNAcutoff+.1*log10(2));
+    NormFitG2 = fitdist(logDNA(hG2), 'Normal');
+    G2minwidth = max(NormFitG2.icdf(.9)-NormFitG2.icdf(.1),.05);
+    G2lim = max(NormFitG2.icdf(.01), DNAcutoff+.1*log10(2));
 else
     % case when too few cells
     G2lim = max(DNAcutoff+.1*log10(2), mean([DNAcutoff, DNAPks(3)]));
+    G2minwidth = .05;
 end
 %% define the DNA range and gates
 d1 = DNAcutoff-DNAPks(1);
@@ -504,8 +518,21 @@ if p.plotting
     plot(DNAcutoff, 0, 'xk');
 end
 
+
 % defines the gates
 DNAGates = [DNAPks(1)-d1 G1lim G2lim DNAPks(3)+d2];
+% inflate if too small
+if diff(DNAGates([1 2]))<G1minwidth
+    DNAGates([1 2]) = mean(DNAGates([1 2]))+[-.6 .4]*G1minwidth;
+end
+if diff(DNAGates([3 4]))<G1minwidth
+    DNAGates([3 4]) = mean(DNAGates([3 4]))+[-.4 .6]*G2minwidth;
+end
+if DNAGates(3)<DNAGates(2)
+    DNAGates(2:3) = mean(DNAGates(2:3));
+end
+
+DNAlims = [min([DNAlims DNAGates-.1]) max([DNAlims DNAGates+.1])];
 
 % compare with input in present
 EvaluatedDNAGates = DNAGates;

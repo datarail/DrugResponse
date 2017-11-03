@@ -29,21 +29,23 @@ if islogical(ManualIdxs)
     assert(height(ClassifiedCells.t_results)==length(ManualIdxs))
     ManualIdxs = find(ManualIdxs);
     
-elseif isvector(ManualIdxs)
+elseif isnumeric(ManualIdxs) 
     assert(all(ManualIdxs>0 & ManualIdxs<=height(ClassifiedCells.t_results)))
     
 else
     SelectedBarcodes = ManualIdxs;
-    if ischar('SelectedBarcodes'), SelectedBarcodes = {SelectedBarcodes}; end
-    if ischar('SelectedWells'), SelectedWells = {SelectedWells}; end
+    if ischar(SelectedBarcodes), SelectedBarcodes = {SelectedBarcodes}; end
+    if ischar(SelectedWells), SelectedWells = {SelectedWells}; end
+    if iscellstr(SelectedWells)
+        SelectedWells = {SelectedWells};
+    end
     assert(length(SelectedWells)==length(SelectedWells))
-    
-    ManualIdxs = false(length(SingleCelldata),1);
+    SelectedWells
+    ManualIdxs = false(height(ClassifiedCells.t_results),1);
     for iB = 1:length(SelectedBarcodes)
-        for i = 1:length(SelectedWells{iB})
-            ManualIdxs(ClassifiedCells.t_results.Barcode==SelectedBarcodes{iB} & ...
-                ClassifiedCells.t_results.Well==SelectedWells{i}) = true;
-        end
+        ManualIdxs(ClassifiedCells.t_results.Barcode==SelectedBarcodes{iB} & ...
+            ismember(ClassifiedCells.t_results.Well,SelectedWells{iB})) = true;
+        
     end
     ManualIdxs = find(ManualIdxs);
 end
@@ -80,7 +82,7 @@ for iW = 1:length(ManualIdxs)
     else
         welltag = 'Trt_';
     end
-    fprintf('  % 2i/%i: %s - %s: %s, c=%.2g (%s)', iW, length(ManualIdxs), ...
+    fprintf('\n  % 2i/%i: %s - %s: %s, c=%.2g (%s)', iW, length(ManualIdxs), ...
         t_results.Barcode(ManualIdxs(iW)), t_results.Well(ManualIdxs(iW)), ...
         t_results.DrugName(ManualIdxs(iW)), t_results.Conc(ManualIdxs(iW)), welltag(1:end-1));
     logtxt = 'MANUAL:';
@@ -94,7 +96,8 @@ for iW = 1:length(ManualIdxs)
     if ~isempty(p.savefolder), savefig = [grp_savefolder ...
             welltag char(t_results.Well(ManualIdxs(iW))) '_LDR_manual.jpg'];
     end
-    [LiveCells, DeadCells, plotResults(ManualIdxs(iW)).LDRGates, plotResults(ManualIdxs(iW)).DNAGates, CellOutcome, ~, ~, ltxt] = DeadCellFilter(LDR, DNA, ...
+    [LiveCells, DeadCells, plotResults(ManualIdxs(iW)).LDRGates, ...
+        plotResults(ManualIdxs(iW)).DNAGates, CellOutcome, ~, ~, ltxt] = DeadCellFilter(LDR, DNA, ...
         'savefig', savefig, 'interactive', true);
     % store the results
     logtxt = [logtxt ' ' ltxt];
