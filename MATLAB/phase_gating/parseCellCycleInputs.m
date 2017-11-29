@@ -30,6 +30,7 @@ addParameter(p, 'TestCutoffs', ...
     'CCphase', 'CCphase_pos', 'CCConsist', 'PksConsist'})))
 addParameter(p, 'CellFrac_Adpative_pH3cutoff', 1/3, @(x) isscalar(x) || isempty(x))
 addParameter(p, 'interactive', false, @islogical) %%%   option ?? <<<<<<<<<<<<<<<----------------------
+addParameter(p, 'plotting', false, @islogical) %%%   option ?? <<<<<<<<<<<<<<<----------------------
 
 parse(p,varargin{:});
 p = p.Results;
