@@ -14,7 +14,7 @@ addParameter(p, 'savefolder', '', @ischar)
 % additional keys to consider for ananlyzing the results
 addParameter(p, 'ConditionKeys', {}, @cellstr)
 % flags for the type of treatments
-addParameter(p, 'NegCtrlLabel', {'ctl_vehicle' 'untrt'}, @cellstr)
+addParameter(p, 'NegCtrlLabel', {'Ctl_vehicle' 'ctl_vehicle' 'untrt' 'Untrt'}, @cellstr)
 addParameter(p, 'PosCtrlLabel', {'ctl_toxic' 'ctl_G1' 'ctl_S' 'ctl_G2'}, @cellstr)
 % define cutoffs for tests
 addParameter(p, 'TestCutoffs', ...
