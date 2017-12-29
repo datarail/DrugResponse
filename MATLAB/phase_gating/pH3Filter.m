@@ -46,7 +46,7 @@ if ~isempty(p.savefigure), p.plotting = true; end
 
 logpH3 = log10(min(max(pH3, 10^p.xpH3(3)),10^p.xpH3(end-2)));
 % only take the cells in G1 or G2; to avoid contamination of pH3 by EdU
-if ~any(CellIdentity==1 | CellIdentity==3)
+if any(CellIdentity==1 | CellIdentity==3)
     f = ksdensity(logpH3(CellIdentity==1 | CellIdentity==3), p.xpH3, 'width', ...
         4*diff(p.xpH3(1:2)));
 else

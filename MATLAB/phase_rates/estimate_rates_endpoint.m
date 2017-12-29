@@ -53,5 +53,5 @@ end
 
 %% find a consensus rate vector and std
 logerr = max(1e-4,-log(min_err));
-est_k = logerr*opt_DrugRates/sum(logerr);
+est_k = logerr(logerr>0)*opt_DrugRates(logerr>0,:)/sum(logerr(logerr>0));
 std_k = std(opt_DrugRates(logerr>0,:),[],1);

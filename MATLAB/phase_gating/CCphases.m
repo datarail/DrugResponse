@@ -62,6 +62,13 @@ f = ksdensity(EdU, e);
 % find the EdU peak for G1/G2
 [~,pk,wdth]=findpeaks(f,'npeaks',2,'widthreference','halfprom',...
     'sortstr','descend','minpeakheight', max(f)/10);
+if isempty(pk)
+    e = -200:2e4;
+    f = ksdensity(EdU, e);
+    % find the EdU peak for G1/G2
+    [~,pk,wdth]=findpeaks(f,'npeaks',2,'widthreference','halfprom',...
+        'sortstr','descend','minpeakheight', max(f)/10);
+end
 wdth = wdth(argmin(pk));
 pk = e(ceil(min(pk)));
 
