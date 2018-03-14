@@ -29,7 +29,6 @@ def get_prominence_reference_level(signal, peak, peak_loc):
     rc_indeces = np.where(np.array(signal) == right_crossing)[0]    
     rc_index = [ri for ri in rc_indeces if ri > peak_loc][0]
     # rc_index = signal.index(right_crossing)
-    print('check', lc_index, rc_index)
     right_range_min = np.min(signal[peak_loc:rc_index+1])
 
     reference_level = np.max([left_range_min, right_range_min])
@@ -43,7 +42,6 @@ def get_width_half_prominence(signal, peak, peak_loc):
     half_prominence = reference_level + 0.5 * (peak - reference_level)
     left_range = signal[:peak_loc+1]
     lhp = list(filter(lambda x: x<half_prominence, left_range))[-1]
-    print(lhp)
     # lhp = min(left_range, key=lambda x:abs(x-half_prominence))
     left_width_indeces = np.where(np.array(signal) == (lhp))[0]
     left_width_ind = [li for li in left_width_indeces.tolist() if li < peak_loc][-1]
@@ -58,6 +56,16 @@ def get_width_half_prominence(signal, peak, peak_loc):
 def get_kde(x, x_grid, bandwidth=None):
     kde = gaussian_kde(x, bandwidth)
     return kde.evaluate(x_grid)
+
+
+def findpeaks(signal):
+    peak_loc = peakutils.peak.indexes(signal)
+    peak_amp = [signal[loc] for loc in peak_loc]
+    width = []
+    for loc, value in zip(peak_loc, peak_amp):
+        lw, lr, _ = get_width_half_prominence(signal, value, loc)
+        width.append(lr-lw)
+    return peak_amp, peak_loc, width    
 
 
 # l = sio.loadmat('peaksig.mat')
