@@ -54,18 +54,26 @@ def get_width_half_prominence(signal, peak, peak_loc):
 
 
 def get_kde(x, x_grid, bandwidth=None):
-    kde = gaussian_kde(x, bandwidth)
+    # Refer to https://jakevdp.github.io/blog/2013/12/01/kernel-density-estimation/
+    kde = gaussian_kde(x, bandwidth / x.std(ddof=1))
     return kde.evaluate(x_grid)
 
 
-def findpeaks(signal):
+def findpeaks(signal, npeaks=None):
     peak_loc = peakutils.peak.indexes(signal)
     peak_amp = [signal[loc] for loc in peak_loc]
     width = []
     for loc, value in zip(peak_loc, peak_amp):
         lw, lr, _ = get_width_half_prominence(signal, value, loc)
         width.append(lr-lw)
-    return peak_amp, peak_loc, width    
+    if npeaks:
+        sorted_peak_amps = sorted(peak_amp)[::-1]
+        sorted_peak_indeces = [peak_amp.index(p) for p in sorted_peak_amps]
+        sorted_loc = [peak_loc[i] for i in sorted_peak_indeces]
+        sorted_width = [width[i] for i in sorted_peak_indeces]
+        return sorted_peak_amps[:npeaks], sorted_loc[:npeaks], sorted_width[:npeaks]
+    else:
+        return peak_amp, peak_loc, width
 
 
 # l = sio.loadmat('peaksig.mat')
