@@ -5,7 +5,23 @@ import scipy.io as sio
 import matplotlib.pyplot as plt
 
 def get_prominence_reference_level(signal, peak, peak_loc):
+    """ Returns the amplitude and location of the lower reference level of a peaks prominence
+    Note that prominence is the the length from the reference level upto the peak
+    Paramters:
+    ----------
+    signal: 1D-array
+    peak: float
+       amplitude of peak whose prominece is to be computed
+    peak_loc: float
+       location on X-axis of peak whose prominence is to be computed
     
+    Return:
+    -------
+    reference_loc: float
+       location of X-axis of peak whose prominence is to be computed. Should equal peak_loc
+    reference_leve: float
+       lower reference level of peak prominence. 
+    """
     left_range = signal[:peak_loc+1]
     if  peak != np.max(left_range):
         sorted_lr = sorted(left_range)
@@ -38,6 +54,8 @@ def get_prominence_reference_level(signal, peak, peak_loc):
 
 
 def get_width_half_prominence(signal, peak, peak_loc):
+    """
+    """
     _, reference_level = get_prominence_reference_level(signal, peak, peak_loc)
     half_prominence = reference_level + 0.5 * (peak - reference_level)
     left_range = signal[:peak_loc+1]
@@ -55,11 +73,32 @@ def get_width_half_prominence(signal, peak, peak_loc):
 
 def get_kde(x, x_grid, bandwidth=None):
     # Refer to https://jakevdp.github.io/blog/2013/12/01/kernel-density-estimation/
-    kde = gaussian_kde(x, bandwidth / x.std(ddof=1))
+    if bandwidth:
+        kde = gaussian_kde(x, bandwidth / x.std(ddof=1))
+    else:
+        kde = gaussian_kde(x)
     return kde.evaluate(x_grid)
 
 
 def findpeaks(signal, npeaks=None):
+    """ Returns the amplitude , location and half-prominence width of peaks
+    from the input signal
+    Parameters:
+    ----------
+    signal: list
+    npeaks: int 
+         number of peaks, locations and width returned sorted from highest to lowes amplitude peaks
+    
+    Returns:
+    --------
+    peak_amp: array of float
+         amplitude of peaks
+    peak_loc: array of float
+         location of peaks
+    width: array of float
+        list of widths at half-prominence 
+       
+    """
     peak_loc = peakutils.peak.indexes(signal)
     peak_amp = [signal[loc] for loc in peak_loc]
     width = []
@@ -71,9 +110,11 @@ def findpeaks(signal, npeaks=None):
         sorted_peak_indeces = [peak_amp.index(p) for p in sorted_peak_amps]
         sorted_loc = [peak_loc[i] for i in sorted_peak_indeces]
         sorted_width = [width[i] for i in sorted_peak_indeces]
-        return sorted_peak_amps[:npeaks], sorted_loc[:npeaks], sorted_width[:npeaks]
+        return (np.array(sorted_peak_amps[:npeaks]),
+                np.array(sorted_loc[:npeaks]),
+                np.array(sorted_width[:npeaks]))
     else:
-        return peak_amp, peak_loc, width
+        return np.array(peak_amp), np.array(peak_loc), np.array(width)
 
 
 # l = sio.loadmat('peaksig.mat')
