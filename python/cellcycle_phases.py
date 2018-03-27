@@ -9,6 +9,7 @@ import pandas as pd
 import accum
 from scipy.ndimage.filters import maximum_filter
 from scipy.spatial.distance import pdist, squareform
+from scipy.stats import norm
 
 
 df = pd.read_table('training_sample_object_level.txt')
@@ -27,16 +28,16 @@ def get_edu_gates(edu, px_edu=None):
     """
     if not px_edu:
         px_edu = np.arange(-0.2, 5.3, .02)
-    x_edu = np.arange(-200, 4e3, 1)
-    # Note: Bandwidth = 100 reproduced MATLAB output
-    f_edu = get_kde(edu, x_edu, bandwidth=100)
+    x_edu = np.arange(-200, 4e3+1, 1)
+    # Note: Bandwidth = 90 reproduced MATLAB output
+    f_edu = get_kde(edu, x_edu, bandwidth=90)
     peak_amp, peak_loc, peak_width = findpeaks(f_edu.tolist(), npeaks=2)
     peak_amp = peak_amp[peak_amp > np.max(f_edu)/10]
     peak_loc = peak_loc[peak_amp > np.max(f_edu)/10]
     peak_width = peak_width[peak_amp > np.max(f_edu)/10]
     if peak_loc.size == 0:
-        x_edu = np.arange(-200, 2e4, 1)
-        f_edu = get_kde(edu, x_edu, bandwidth=100)
+        x_edu = np.arange(-200, 2e4+1, 1)
+        f_edu = get_kde(edu, x_edu, bandwidth=90)
         peak_amp, peak_loc, peak_width = findpeaks(f_edu.tolist(), npeaks=2)
         peak_amp = peak_amp[peak_amp > np.max(f_edu)/10]
         peak_loc = peak_loc[peak_amp > np.max(f_edu)/10]
@@ -46,8 +47,8 @@ def get_edu_gates(edu, px_edu=None):
 
     # Find location of minimum on right
     if np.any(edu > (peak_loc + 30)):
-        edu_higher = np.array([e for e in edu if e > (peak_loc + 30)])
-        f2_edu = get_kde(edu_higher, x_edu)
+        edu_higher = edu[edu > peak_loc + 30]
+        f2_edu = get_kde(edu_higher, x_edu, bandwidth=510)
         f2_edu_neg = [-x for x in f2_edu]
         _, peak_trough, _ = findpeaks(f2_edu_neg, npeaks=2)
         peak_trough = x_edu[math.ceil(
@@ -55,7 +56,6 @@ def get_edu_gates(edu, px_edu=None):
         peak_trough = np.max([peak_trough, peak_loc+3*peak_width])
     else:
         peak_trough = peak_loc + 3 * peak_width
-
     # Edu offset
     # ** Not entirely clear to me yet
     offset_edu = np.max((peak_loc-1.5 * peak_width, 1))
@@ -175,7 +175,8 @@ def imregionalmax(f):
 
 
 def get_2d_histogram(log_dna, x_dna, log_edu, px_edu):
-    # Count the log intensity in each 2-D bin
+    """ Count the log intensity in each 2-D bin
+    """
     # ---------------------------------------
     # get bin index for each log intensity value
     _, bin_indeces_dna = histc(log_dna, x_dna)
@@ -190,10 +191,13 @@ def get_2d_histogram(log_dna, x_dna, log_edu, px_edu):
 
 
 def get_2D_peak(h, x_dna, px_edu, nsmooth=5):
+    """ Return peaks candidates from 2D readout of DNA and EdU
+    """
     g = smooth_1d(h, nsmooth)
     f = smooth_1d(g.T, nsmooth).T
     peak_2d = imregionalmax(f)
     x, y = np.nonzero(peak_2d)
+    print(x, y)
     pre_peak_candidates = np.array([x_dna[y], px_edu[x], f[peak_2d]]).T
     peak_candidates = pre_peak_candidates[
         ((px_edu[x] > (nsmooth + 2) * (px_edu[1] - px_edu[0])) &
@@ -246,7 +250,9 @@ def get_phase_candidates(peak_candidates, edu_shift, edu_s_min):
             peak_candidates[:, 2].reshape(peak_candidates.shape[0], 1),
             1, peak_candidates.shape[0])
         s_phase_candidates = peak_candidates[np.argmax(
-            edu_peak_bool * np.sum(np.abs(repmat1 - repmat1.T < np.log10(2) * 0.75) * repmat2, axis=0).T +
+            edu_peak_bool *
+            np.sum(np.abs(repmat1 - repmat1.T < np.log10(2) * 0.75) *
+                   repmat2, axis=0).T +
             peak_candidates[:, 2]
         ), [0, 1]
         ]
@@ -291,30 +297,282 @@ def get_phase_candidates(peak_candidates, edu_shift, edu_s_min):
 
 # Working with each channel sequentially
 # --------------------------------------
-def get_dna_peaks(log_dna, x_dna, log_edu, edu_shift,
-                  min_edu, max_edu, phase_candidates):
+def get_g1_dna_peak(log_dna, x_dna, log_edu, edu_shift,
+                    edu_s_min, edu_g1_max, phase_candidates):
     f_dna = get_kde(log_dna, x_dna)
-    log_dna_low_edu = log_dna[(log_edu < min_edu+0.2*edu_shift) &
-                              (log_edu < max_edu)]
+    log_dna_low_edu = log_dna[(log_edu < edu_s_min+0.2*edu_shift) &
+                              (log_edu < edu_g1_max)]
     f_dna_low_edu = get_kde(log_dna_low_edu, x_dna)
     peak_amp, peak_loc, _ = findpeaks(f_dna_low_edu.tolist())
     peak_loc = peak_loc[peak_amp > np.max(peak_amp/10)]
-    dna_peaks = x_dna[peak_loc[:3]]
+    dna_g1_loc = x_dna[peak_loc[:3]]
 
-    if len(dna_peaks) > 1:
+    if len(dna_g1_loc) > 1:
         if phase_candidates[0, 0]:
-            dna_peaks = dna_peaks[np.argmin(np.abs(
-                dna_peaks - phase_candidates[0, 0]))]
+            dna_g1_loc = dna_g1_loc[np.argmin(np.abs(
+                dna_g1_loc - phase_candidates[0, 0]))]
         elif phase_candidates[1, 0]:
-            dna_peaks = np.max(dna_peaks[
-                dna_peaks > phase_candidates[1, 0]])
+            dna_g1_loc = np.max(dna_g1_loc[
+                dna_g1_loc > phase_candidates[1, 0]])
         else:
-            dna_peaks = np.min(dna_peaks)
-
-    if not np.any(dna_peaks):
-        dna_peaks = np.nanmin(phase_candidates[:, 0] - np.log10(1.2))
+            dna_g1_loc = np.min(dna_g1_loc)
+    if not np.any(dna_g1_loc):
+        dna_g1_loc = np.nanmin(phase_candidates[:, 0] - np.log10(1.2))
     plt.plot(x_dna, f_dna)
-    plt.plot(dna_peaks, .1, 'xk')
+    plt.plot(dna_g1_loc, .1, 'xk')
     plt.xlabel('log (DNA)')
     plt.ylabel('kernel density estimate')
-    return dna_peaks
+    return dna_g1_loc
+
+
+# Working with EdU channel
+# ------------------------
+
+
+def get_low_edu_peaks(log_edu, px_edu, edu_shift,
+                      edu_g1_max,
+                      log_dna, dna_g1_loc, nsmooth=5):
+    f_edu = get_kde(log_edu, px_edu)
+    log_edu_low_bool = ((log_dna > dna_g1_loc - 1) &
+                        (log_dna < dna_g1_loc + 0.1) &
+                        (log_edu > 2 * nsmooth * (px_edu[1] - px_edu[0])) &
+                        (log_edu < edu_g1_max))
+    if not np.any(log_edu_low_bool):
+        log_edu_low_bool = ((log_dna > dna_g1_loc - 1) &
+                            (log_dna < dna_g1_loc + 0.1) &
+                            (log_edu < edu_g1_max))
+    f_edu_low = get_kde(log_edu[log_edu_low_bool], px_edu)
+    bin_counts, _ = histc(log_edu[log_edu_low_bool], px_edu)
+    # Check discrepency in array length when using 3
+    f_edu_low[[True, smooth.smooth(bin_counts, 2.99, 'flat') <= 1/3]] = 0
+
+    edu_amp, edu_loc, _ = findpeaks(smooth.smooth(f_edu_low, nsmooth).tolist(),
+                                    npeaks=2)
+    if np.any(edu_loc):
+        edu_loc = edu_loc[edu_amp > 0.3 * np.max(edu_amp)]
+        low_edu_peaks = px_edu[edu_loc[np.argmin(edu_loc)]]
+    else:
+        low_edu_peaks = np.median(log_edu[log_edu_low_bool])
+    return low_edu_peaks
+
+
+# Get peaks with high EdU values
+# ------------------------------
+def get_high_edu_peaks(log_edu, px_edu, edu_shift,
+                       low_edu_peaks, log_dna, dna_g1_loc,
+                       nsmooth=5):
+    high_edu_bool = ((log_dna > dna_g1_loc - np.log10(2)/2) &
+                     (log_dna < dna_g1_loc + np.log10(2) * 1.5) &
+                     (log_edu > low_edu_peaks + edu_shift * 0.8))
+    if np.any(high_edu_bool):
+        f_edu_high = get_kde(log_edu[high_edu_bool], px_edu)
+        edu_amp, edu_loc, _ = findpeaks(smooth.smooth(
+            f_edu_high, nsmooth, 'flat').tolist())
+        # Remove lesser peaks
+        high_edu_loc = edu_loc[edu_amp > np.max(edu_amp/10)]
+
+        high_edu_bool = px_edu[high_edu_loc] > low_edu_peaks + edu_shift
+        if np.any(high_edu_bool):
+            high_edu_peaks = px_edu[high_edu_loc[
+                np.nonzero(high_edu_bool)[0][0]]]
+        else:
+            high_edu_peaks = low_edu_peaks + edu_shift
+
+        f_edu = get_kde(log_edu, px_edu)
+        neg_f_edu = [-x for x in f_edu]
+        _, edu_loc, _ = findpeaks(neg_f_edu)
+        edu_cutoff = px_edu[edu_loc[
+            ((np.nonzero(px_edu[edu_loc] > low_edu_peaks) &
+              (px_edu[edu_loc] < high_edu_peaks)))[0][0]
+        ]]
+        if not np.any(edu_cutoff):
+            edu_cutoff = px_edu[np.argmin(smooth.smooth(f_edu.T, nsmooth, 'flat').T +
+                                          ((px_edu < low_edu_peaks) |
+                                           (px_edu > high_edu_peaks)))]
+        print(edu_cutoff, high_edu_peaks)
+        print(2 * high_edu_peaks - edu_cutoff)
+        edu_lims = [px_edu[2],
+                    np.min((2 * high_edu_peaks - edu_cutoff, px_edu[-2]))]
+        # dna_s_loc = get_s_phase_dna_peaks(log_dna, x_dna, dna_g1_loc,
+        #                                   log_edu, edu_cutoff)
+    else:
+        high_edu_peaks = low_edu_peaks + edu_shift
+        edu_cutoff = np.mean(low_edu_peaks, high_edu_peaks)
+        edu_lims = [-0.02,
+                    np.min((2*high_edu_peaks - edu_cutoff + 0.1, px_edu[-2]))]
+        # dna_s_loc = dna_g1_loc + 0.5 * np.log10(2)
+    edu_gates = [edu_cutoff,
+                 high_edu_peaks + np.max((high_edu_peaks-edu_cutoff, 1))]
+    edu_lims[1] = np.max((edu_lims[1], edu_gates[1]+0.1))
+    return edu_cutoff, edu_lims, edu_gates
+
+
+def get_s_phase_dna_loc(log_dna, x_dna,  dna_g1_loc, log_edu, edu_cutoff,
+                        nsmooth=5):
+    high_dna_bool = ((log_dna > dna_g1_loc - np.log10(2)*0.5) &
+                     (log_dna < dna_g1_loc + np.log10(2)*1.5) &
+                     (log_edu > edu_cutoff))
+    if np.any(high_dna_bool):
+        f_dna = get_kde(log_dna[high_dna_bool], x_dna, bandwidth=0.0317)
+        dna_amp, dna_loc, _ = findpeaks(
+            smooth.smooth(f_dna, nsmooth, 'flat').tolist(),
+            npeaks=1)
+        dna_s_loc = x_dna[dna_loc[0]]
+    else:
+        dna_s_loc = dna_g1_loc + 0.5 * np.log10(2)
+    return dna_s_loc
+
+
+def get_g2_dna_loc(log_dna, x_dna, log_edu, edu_cutoff, dna_g1_loc,
+                   phase_candidates, nsmooth):
+    high_dna_bool = ((log_dna > dna_g1_loc + 0.4 * np.log10(2)) &
+                     (log_edu < edu_cutoff))
+    f_dna = get_kde(log_dna[high_dna_bool], x_dna)
+
+    peak_amp, peak_loc, _ = findpeaks(smooth.smooth(f_dna, nsmooth).tolist())
+    peak_loc = peak_loc[peak_amp > np.max(peak_loc/10)]
+    g2_loc_candidates = x_dna[peak_loc]
+    g2_loc_candidates = g2_loc_candidates[g2_loc_candidates >
+                                          (dna_g1_loc + 0.5*np.log10(2))]
+    if len(g2_loc_candidates) > 1:
+        if np.any(phase_candidates[2, 0]):
+            g2_loc = g2_loc_candidates[np.argmin(
+                np.abs(g2_loc_candidates - phase_candidates[2, 0]))]
+        else:
+            bc = ((np.any(phase_candidates[1, 0])) &
+                  (np.any(g2_loc_candidates > phase_candidates[1, 0])))
+            if bc:
+                g2_loc = g2_loc_candidates[
+                    g2_loc_candidates > phase_candidates[1, 0]]
+            g2_loc = g2_loc[np.argmin(np.abs(
+                g2_loc - dna_g1_loc - np.log10(2)))]
+    elif len(g2_loc_candidates) == 1:
+                g2_loc = g2_loc_candidates
+    else:
+            g2_loc = dna_g1_loc + np.log10(2)
+    return g2_loc
+
+
+def get_dna_cutoff(log_dna, x_dna, log_edu, edu_cutoff,
+                   dna_g1_loc, dna_s_loc,
+                   phase_candidates, nsmooth):
+    high_dna_bool = ((log_dna > dna_g1_loc + 0.4 * np.log10(2)) &
+                     (log_edu < edu_cutoff))
+    if np.any(high_dna_bool):
+        dna_g2_loc = get_g2_dna_loc(log_dna, x_dna, log_edu, edu_cutoff,
+                                    dna_g1_loc, phase_candidates, nsmooth)
+        f_dna = get_kde(log_dna[log_edu < edu_cutoff], x_dna)
+        smooth_f_dna = smooth.smooth(f_dna, nsmooth, 'flat')
+        _, peak_loc, _ = findpeaks([-x for x in smooth_f_dna])
+        dna_cutoff = x_dna[peak_loc[((x_dna[peak_loc] > dna_g1_loc) &
+                                     (x_dna[peak_loc] < dna_g2_loc))]]
+        print(dna_cutoff)
+        if not np.any(dna_cutoff):
+            dna_cutoff = np.min((np.max((dna_s_loc, dna_g1_loc + 0.02)),
+                                 dna_g2_loc - 0.02))
+        elif len(dna_cutoff) >= 1:
+            dna_cutoff = dna_cutoff[0]
+    else:
+        dna_cutoff = dna_g1_loc + 0.3 * np.log10(2)
+        dna_g2_loc = dna_g1_loc + np.log10(2)
+    return dna_cutoff, dna_g2_loc
+
+
+def get_normal_dist(data):
+    mu, std = norm.fit(data)
+    xmin, xmax = data.min(), data.max()
+    x = np.linspace(xmin, xmax, len(data))
+    p = norm.pdf(x, mu, std)
+    return p, mu, std
+
+
+# Find cells dropping in S-phase
+# ------------------------------
+def get_dna_gates(log_dna, x_dna, dna_g1_loc, dna_g2_loc, dna_cutoff,
+                  log_edu, edu_cutoff):
+    hg1 = np.abs(((log_dna - dna_g1_loc < 0.3 * np.log10(2)) &
+                  (log_edu < edu_cutoff)))
+    if np.sum(hg1) > 10:
+        norm_fit_g1, mu, std = get_normal_dist(log_dna[hg1])
+        g1_min_width = np.max((norm.ppf(0.9, mu, std) - norm.ppf(0.1, mu, std),
+                               0.05))
+        g1_lim = np.min((norm.ppf(0.99, mu, std),
+                         dna_cutoff - 0.1 * np.log10(2)))
+    else:
+        g1_min_width = 0.05
+        g1_lim = np.min((dna_cutoff - 0.1 * np.log10(2),
+                         np.mean((dna_cutoff, dna_g1_loc))))
+
+    hg2 = np.abs(((log_dna - dna_g2_loc < 0.3 * np.log10(2)) &
+                  (log_edu < edu_cutoff)))
+    if np.sum(hg2) > 10:
+        norm_fit_g2, mu, std = get_normal_dist(log_dna[hg2])
+        g2_min_width = np.max((norm.ppf(0.9, mu, std) - norm.ppf(0.1, mu, std),
+                               0.05))
+        g2_lim = np.max((norm.ppf(0.1, mu, std),
+                         dna_cutoff + 0.1 * np.log10(2)))
+    else:
+        g2_min_width = 0.05
+        g2_lim = np.min((dna_cutoff + 0.1 * np.log10(2),
+                         np.mean((dna_cutoff, dna_g2_loc))))
+
+    d1 = dna_cutoff - dna_g1_loc
+    d2 = dna_g2_loc - dna_cutoff
+    dna_lims = np.array([np.max((dna_g1_loc - 3 * d1, x_dna[1])),
+                         np.min((dna_g2_loc + 3 * d2, x_dna[-2]))])
+
+    dna_gates = np.array([dna_g1_loc - d1, g1_lim, g2_lim, dna_g2_loc+d2])
+    print(dna_gates)
+    if dna_gates[1] - dna_gates[0] < g1_min_width:
+        dna_gates[:2] = [x * g1_min_width + np.mean(dna_gates[:2])
+                         for x in [-0.6, -.4]]
+    if dna_gates[3] - dna_gates[2] < g1_min_width:  # CHECK ########
+        dna_gates[2:] = [x * g2_min_width + np.mean(dna_gates[2:])
+                         for x in [-0.4, .6]]
+    if dna_gates[2] < dna_gates[1]:
+        dna_gates[1:3] = np.mean(dna_gates[1:3])
+
+    dna_gl = list(dna_lims) + [g-0.1 for g in dna_gates]
+    dna_lims = [np.min(dna_gl), np.max(dna_gl)]
+    return dna_gates, dna_lims
+
+
+def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna, dna_peaks,
+                              log_edu, edu_gates, px_edu, edu_peaks,
+                              nsmooth=5):
+    cell_id = (1 * ((log_dna > dna_gates[0]) &  # G1
+                    (log_dna < dna_gates[1]) &
+                    (log_edu < edu_gates[0])) +
+               2 * ((log_dna >= dna_gates[0]) &  # S
+                    (log_dna < dna_gates[3]) &
+                    (log_edu >= edu_gates[0]) &
+                    (log_edu < edu_gates[1])) +
+               2.1 * ((log_dna >= dna_gates[1])  # S dropout
+                      & (log_dna < dna_gates[2]) &
+                      (log_edu < edu_gates[0])) +
+               3 * ((log_dna >= dna_gates[2]) &  # G2
+                    (log_dna < dna_gates[3]) &
+                    (log_edu < edu_gates[0])))
+    print('edu_gates', edu_gates)
+    for ig in np.arange(1, 4):
+        if sum(cell_id == ig) > 10:
+            print(ig, 'pass')
+            f_dna = get_kde(log_dna[cell_id == ig], x_dna)
+            _, dna_loc, _ = findpeaks(
+                smooth.smooth(f_dna, 3 * nsmooth).tolist(),
+                npeaks=1)
+            dna_peaks[ig-1] = x_dna[dna_loc]
+            print(ig, dna_loc)
+            f_edu = get_kde(log_edu[cell_id == ig], px_edu)
+            _, edu_loc, _ = findpeaks(
+                smooth.smooth(f_edu, 3 * nsmooth).tolist(),
+                npeaks=1)
+            edu_peaks[ig-1] = px_edu[edu_loc]
+            print('edu_gates', ig, edu_gates)
+        else:
+            print(ig, 'fail')
+            dna_peaks[ig-1] = np.mean(dna_gates[ig-1:2])
+            edu_peaks[ig-1] = np.mean((edu_gates[0], (ig == 2)*edu_gates[1]))
+        edu_peaks[1] = np.max((edu_peaks[1], edu_gates[0] + 0.1))
+    peaks = [dna_peaks, edu_peaks]
+    return cell_id, peaks
