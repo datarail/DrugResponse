@@ -23,11 +23,11 @@ dna = np.array(dna)
 # -------------------
 
 
-def get_edu_gates(edu, px_edu=None):
+def get_edu_gates(edu, px_edu, plotting=False):
     """ Returns estimate of max EdU for G1 gating and min EdU for S phase gating
     """
-    if not px_edu:
-        px_edu = np.arange(-0.2, 5.3, .02)
+    #if not px_edu:
+    #    px_edu = np.arange(-0.2, 5.3, .02)
     x_edu = np.arange(-200, 4e3+1, 1)
     # Note: Bandwidth = 90 reproduced MATLAB output
     f_edu = get_kde(edu, x_edu, bandwidth=90)
@@ -83,25 +83,26 @@ def get_edu_gates(edu, px_edu=None):
 
     # Plotting
     # --------
-    idx = np.random.permutation(len(edu))
-    idx = idx[:np.min((len(edu), 1000))]
-    edu = np.array(edu)
-    plt.plot(edu[idx], log_edu[idx], '.c')
-    px_edu = np.arange(-0.2, 5.3, .02)
-    plt.plot(x_edu, np.max(px_edu) * (f_edu/np.max(f_edu)), 'k-')
-    plt.plot(x_edu, np.max(px_edu) * (f2_edu/np.max(f2_edu)), 'k--')
-    plt.plot([-200, 300, np.nan, -100, 500],
-             [edu_s_min, edu_s_min, np.nan,
-              edu_shift+np.log10(np.max((peak_loc-offset_edu, 1))),
-              edu_shift+np.log10(np.max((peak_loc-offset_edu, 1)))], '-r')
-    plt.plot([offset_edu, offset_edu], [0, 5], ':r')
-    plt.plot([100, peak_trough, peak_trough],
-             [edu_g1_max, edu_g1_max, 0], '--r')
-    plt.ylim((px_edu[0], px_edu[-1]))
-    plt.xlim([-200, np.max((peak_loc + 5 * peak_width, 500))])
-    plt.xlabel('EdU intensity')
-    plt.ylabel('log10 (EdU')
-    return peak_loc, offset_edu, edu_g1_max, edu_s_min
+    if plotting:
+        idx = np.random.permutation(len(edu))
+        idx = idx[:np.min((len(edu), 1000))]
+        edu = np.array(edu)
+        plt.plot(edu[idx], log_edu[idx], '.c')
+        px_edu = np.arange(-0.2, 5.3, .02)
+        plt.plot(x_edu, np.max(px_edu) * (f_edu/np.max(f_edu)), 'k-')
+        plt.plot(x_edu, np.max(px_edu) * (f2_edu/np.max(f2_edu)), 'k--')
+        plt.plot([-200, 300, np.nan, -100, 500],
+                 [edu_s_min, edu_s_min, np.nan,
+                  edu_shift+np.log10(np.max((peak_loc-offset_edu, 1))),
+                  edu_shift+np.log10(np.max((peak_loc-offset_edu, 1)))], '-r')
+        plt.plot([offset_edu, offset_edu], [0, 5], ':r')
+        plt.plot([100, peak_trough, peak_trough],
+                 [edu_g1_max, edu_g1_max, 0], '--r')
+        plt.ylim((px_edu[0], px_edu[-1]))
+        plt.xlim([-200, np.max((peak_loc + 5 * peak_width, 500))])
+        plt.xlabel('EdU intensity')
+        plt.ylabel('log10 (EdU')
+    return edu_shift, offset_edu, edu_g1_max, edu_s_min
 
 
 def compute_log_dna(dna, x_dna=None):
@@ -129,7 +130,10 @@ def compute_log_edu(edu, px_edu, offset_edu):
     return log_edu
 
 
-def plot_edu_dna_scatter(dna, edu, offset_edu, x_dna=None, px_edu=None):
+def plot_edu_dna_scatter(dna, edu, offset_edu,
+                         dna_gates, edu_gates,
+                         dna_lims, edu_lims,
+                         x_dna=None, px_edu=None):
     if x_dna is None:
         x_dna = np.arange(2.5, 8, 0.02)
     if px_edu is None:
@@ -138,9 +142,16 @@ def plot_edu_dna_scatter(dna, edu, offset_edu, x_dna=None, px_edu=None):
     log_edu = compute_log_edu(edu, px_edu, offset_edu)
     xy = np.vstack([log_dna, log_edu])
     z = gaussian_kde(xy)(xy)
+    scatter_fig = plt.figure()
     plt.scatter(log_dna, log_edu, c=z, s=10)
-    plt.xlabel('log10 (DNA)')
+    plt.plot([dna_gates[i] for i in [0, 0, 3, 3, 0, 0, 1, 1, 0, 2, 2, 3]],
+             [-1, edu_gates[1], edu_gates[1], -1, np.nan, edu_gates[0], edu_gates[0],
+              -1, np.nan, -1, edu_gates[0], edu_gates[0]], '--', color='red')
+    plt.xlabel('log10 (DNA content)')
     plt.ylabel('log10 (EdU)')
+    plt.xlim(dna_lims)
+    plt.ylim(edu_lims)
+    return scatter_fig
 
 # Find peaks in 2-dimensions (EdU and DNA)
 # ----------------------------------------
@@ -220,16 +231,29 @@ def iterate_2D_peak(h, x_dna, px_edu, nsmooth=5):
     return peak_candidates
 
 
-def plot_2D_peaks(log_dna, x_dna, log_edu, px_edu, nsmooth=5):
+def plot_2D_peaks(log_dna, x_dna, edu, px_edu, nsmooth=5):
+    edu_shift, offset_edu, edu_g1_max, edu_s_min = get_edu_gates(edu, px_edu)
+    log_edu = compute_log_edu(edu, px_edu, offset_edu)
     h = get_2d_histogram(log_dna, x_dna, log_edu, px_edu)
     g = smooth_1d(h, nsmooth)
     f = smooth_1d(g.T, nsmooth).T
     peak_candidates = iterate_2D_peak(h, x_dna, px_edu, nsmooth)
+    edu_shift, offset_edu, edu_g1_max, edu_s_min = get_edu_gates(edu, px_edu)
+    phase_candidates = get_phase_candidates(peak_candidates,
+                                            edu_shift, edu_s_min)
     plt.pcolor(x_dna, px_edu, f)
     plt.plot(peak_candidates[:, 0], peak_candidates[:, 1], 'ok',
              markersize=4, markerfacecolor='None')
-    plt.xlabel('log (DNA)')
-    plt.ylabel('log (EdU)')
+    phases = ['G1', 'S', 'G2']
+    for i, phase in enumerate(phases):
+        plt.text(phase_candidates[i, 0], phase_candidates[i, 1], phase,
+                 fontsize=14, color='red')
+    plt.plot([dna_gates[i] for i in [0, 0, 3, 3, 0, 0, 1, 1, 0, 2, 2, 3]],
+             [-1, edu_gates[1], edu_gates[1], -1, np.nan, edu_gates[0], edu_gates[0],
+              -1, np.nan, -1, edu_gates[0], edu_gates[0]],
+              linewidth=2, color='red')    
+    plt.xlabel('log (DNA content)')
+    plt.ylabel('log (EdU intensity)')
     plt.xlim(quantile(x_dna, [0.25, 0.75]))
     plt.ylim(quantile(px_edu, [0.1, 0.75]))
 
@@ -318,11 +342,12 @@ def get_g1_dna_peak(log_dna, x_dna, log_edu, edu_shift,
             dna_g1_loc = np.min(dna_g1_loc)
     if not np.any(dna_g1_loc):
         dna_g1_loc = np.nanmin(phase_candidates[:, 0] - np.log10(1.2))
+    dna_fig = plt.figure('dna_figure')
     plt.plot(x_dna, f_dna)
     plt.plot(dna_g1_loc, .1, 'xk')
     plt.xlabel('log (DNA)')
     plt.ylabel('kernel density estimate')
-    return dna_g1_loc
+    return dna_g1_loc, dna_fig
 
 
 # Working with EdU channel
@@ -407,10 +432,12 @@ def get_high_edu_peaks(log_edu, px_edu, edu_shift,
     return edu_cutoff, edu_lims, edu_gates
 
 
-def get_s_phase_dna_loc(log_dna, x_dna,  dna_g1_loc, log_edu, edu_cutoff,
+def get_s_phase_dna_loc(log_dna, x_dna,
+                        dna_g1_loc, dna_fig,
+                        log_edu, edu_cutoff,
                         nsmooth=5):
-    high_dna_bool = ((log_dna > dna_g1_loc - np.log10(2)*0.5) &
-                     (log_dna < dna_g1_loc + np.log10(2)*1.5) &
+    high_dna_bool = ((log_dna > dna_g1_loc - np.log10(2) * 0.5) &
+                     (log_dna < dna_g1_loc + np.log10(2) * 1.5) &
                      (log_edu > edu_cutoff))
     if np.any(high_dna_bool):
         f_dna = get_kde(log_dna[high_dna_bool], x_dna, bandwidth=0.0317)
@@ -420,10 +447,13 @@ def get_s_phase_dna_loc(log_dna, x_dna,  dna_g1_loc, log_edu, edu_cutoff,
         dna_s_loc = x_dna[dna_loc[0]]
     else:
         dna_s_loc = dna_g1_loc + 0.5 * np.log10(2)
-    return dna_s_loc
+    plt.figure(dna_fig.number)
+    plt.plot(x_dna, f_dna, '-.')
+    return dna_s_loc, dna_fig
 
 
-def get_g2_dna_loc(log_dna, x_dna, log_edu, edu_cutoff, dna_g1_loc,
+def get_g2_dna_loc(log_dna, x_dna, log_edu, edu_cutoff,
+                   dna_g1_loc, dna_fig,
                    phase_candidates, nsmooth):
     high_dna_bool = ((log_dna > dna_g1_loc + 0.4 * np.log10(2)) &
                      (log_edu < edu_cutoff))
@@ -450,17 +480,19 @@ def get_g2_dna_loc(log_dna, x_dna, log_edu, edu_cutoff, dna_g1_loc,
                 g2_loc = g2_loc_candidates
     else:
             g2_loc = dna_g1_loc + np.log10(2)
-    return g2_loc
+    plt.figure(dna_fig.number)
+    plt.plot(x_dna, f_dna, ':')
+    return g2_loc, dna_fig
 
 
 def get_dna_cutoff(log_dna, x_dna, log_edu, edu_cutoff,
-                   dna_g1_loc, dna_s_loc,
+                   dna_g1_loc, dna_s_loc, dna_fig,
                    phase_candidates, nsmooth):
     high_dna_bool = ((log_dna > dna_g1_loc + 0.4 * np.log10(2)) &
                      (log_edu < edu_cutoff))
     if np.any(high_dna_bool):
-        dna_g2_loc = get_g2_dna_loc(log_dna, x_dna, log_edu, edu_cutoff,
-                                    dna_g1_loc, phase_candidates, nsmooth)
+        dna_g2_loc, dna_fig = get_g2_dna_loc(log_dna, x_dna, log_edu, edu_cutoff,
+                                             dna_g1_loc, dna_fig, phase_candidates, nsmooth)
         f_dna = get_kde(log_dna[log_edu < edu_cutoff], x_dna)
         smooth_f_dna = smooth.smooth(f_dna, nsmooth, 'flat')
         _, peak_loc, _ = findpeaks([-x for x in smooth_f_dna])
@@ -475,7 +507,10 @@ def get_dna_cutoff(log_dna, x_dna, log_edu, edu_cutoff,
     else:
         dna_cutoff = dna_g1_loc + 0.3 * np.log10(2)
         dna_g2_loc = dna_g1_loc + np.log10(2)
-    return dna_cutoff, dna_g2_loc
+    plt.figure(dna_fig.number)
+    plt.plot([dna_g1_loc, dna_s_loc, dna_g2_loc], [0, 0, 0], 'xk')
+    plt.plot(dna_cutoff, 0, 'xk')
+    return dna_cutoff, dna_g2_loc, dna_fig
 
 
 def get_normal_dist(data):
@@ -576,3 +611,21 @@ def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna, dna_peaks,
         edu_peaks[1] = np.max((edu_peaks[1], edu_gates[0] + 0.1))
     peaks = [dna_peaks, edu_peaks]
     return cell_id, peaks
+
+
+def plot_dna_peaks():
+    dna_g1_loc, dna_fig = get_g1_dna_peak(log_dna, x_dna, log_edu, edu_shift,
+                                          edu_s_min, edu_g1_max, phase_candidates)
+    dna_s_loc, dna_fig = get_s_phase_dna_loc(log_dna, x_dna, dna_g1_loc, dna_fig,
+                                             log_edu, edu_cutoff)
+
+    dna_cutoff, dna_g2_loc, dna_fig = get_dna_cutoff(log_dna, x_dna, log_edu, edu_cutoff,
+                                            dna_g1_loc, dna_s_loc, dna_fig,
+                                            phase_candidates, 5)
+    dna_gates, dna_lims = get_dna_gates(log_dna, x_dna, dna_g1_loc, dna_g2_loc,
+                                        dna_cutoff, log_edu, edu_cutoff)
+    plt.figure(dna_fig.number)
+    plt.plot([dna_gates[i] for i in [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3]],
+             [np.max(plt.ylim()) * i for i in [0, 1, np.nan, 0, 1, np.nan, 0, 1, np.nan, 0, 1]],
+              '--', color='red')
+    plt.xlim(dna_lims)
