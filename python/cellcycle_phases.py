@@ -618,19 +618,45 @@ def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna, dna_peaks,
     return fractions, cell_id, peaks
 
 
-def plot_dna_peaks():
-    dna_g1_loc, dna_fig = get_g1_dna_peak(log_dna, x_dna, log_edu, edu_shift,
-                                          edu_s_min, edu_g1_max, phase_candidates)
-    dna_s_loc, dna_fig = get_s_phase_dna_loc(log_dna, x_dna, dna_g1_loc, dna_fig,
-                                             log_edu, edu_cutoff)
+def plot_dna_peaks(dna, edu, x_dna=None, px_edu=None):
+    if px_edu is None:
+        px_edu = np.arange(-0.2, 5.3, .02)
+    if x_dna is None:
+        x_dna = np.arange(2.5, 8, 0.02)
+    log_dna = compute_log_dna(dna, x_dna)
 
-    dna_cutoff, dna_g2_loc, dna_fig = get_dna_cutoff(log_dna, x_dna, log_edu, edu_cutoff,
-                                            dna_g1_loc, dna_s_loc, dna_fig,
-                                            phase_candidates, 5)
+    edu_shift, offset_edu, edu_g1_max, edu_s_min = get_edu_gates(edu, px_edu)
+    log_edu = compute_log_edu(edu, px_edu, offset_edu)
+    h = get_2d_histogram(log_dna, x_dna, log_edu, px_edu)
+    peak_candidates = iterate_2D_peak(h, x_dna, px_edu, nsmooth=5)
+    phase_candidates = get_phase_candidates(peak_candidates,
+                                            edu_shift, edu_s_min)
+
+    dna_g1_loc, dna_fig = get_g1_dna_peak(log_dna, x_dna, log_edu, edu_shift,
+                                          edu_s_min, edu_g1_max,
+                                          phase_candidates)
+
+    low_edu_peaks = get_low_edu_peaks(log_edu, px_edu, edu_shift,
+                                      edu_g1_max,
+                                      log_dna, dna_g1_loc, nsmooth=5)
+    edu_cutoff, edu_lims, edu_gates = get_high_edu_peaks(log_edu, px_edu,
+                                                         edu_shift,
+                                                         low_edu_peaks,
+                                                         log_dna, dna_g1_loc,
+                                                         nsmooth=5)
+
+    dna_s_loc, dna_fig = get_s_phase_dna_loc(log_dna, x_dna, dna_g1_loc,
+                                             dna_fig, log_edu, edu_cutoff)
+
+    dna_cutoff, dna_g2_loc, dna_fig = get_dna_cutoff(log_dna, x_dna, log_edu,
+                                                     edu_cutoff, dna_g1_loc,
+                                                     dna_s_loc, dna_fig,
+                                                     phase_candidates, 5)
     dna_gates, dna_lims = get_dna_gates(log_dna, x_dna, dna_g1_loc, dna_g2_loc,
                                         dna_cutoff, log_edu, edu_cutoff)
     plt.figure(dna_fig.number)
     plt.plot([dna_gates[i] for i in [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3]],
-             [np.max(plt.ylim()) * i for i in [0, 1, np.nan, 0, 1, np.nan, 0, 1, np.nan, 0, 1]],
-              '--', color='red')
+             [np.max(plt.ylim()) * i for i in [0, 1, np.nan, 0, 1, np.nan,
+                                               0, 1, np.nan, 0, 1]],
+             '--', color='red')
     plt.xlim(dna_lims)
