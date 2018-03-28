@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 # from itertools import compress
 import smooth
 from scipy.stats import gaussian_kde
+import matplotlib.gridspec as gridspec
 
 #  Gating based on LDR
 #  --------------------
@@ -48,7 +49,8 @@ def get_ldrlims(ldrtxt, x_ldr=None):
     return ldr_lims
 
 
-def plot_ldr_gating(ldrtxt, x_ldr=None, ldr_gates=None, ldr_lims=None):
+def plot_ldr_gating(ldrtxt, x_ldr=None, ldr_gates=None,
+                    ldr_lims=None, ax=None):
     if x_ldr is None:
         mx = np.max(ldrtxt.tolist())+0.01
         x_ldr = np.arange(-0.01, mx, 0.0002)
@@ -58,19 +60,21 @@ def plot_ldr_gating(ldrtxt, x_ldr=None, ldr_gates=None, ldr_lims=None):
     if not ldr_lims:
         ldr_lims = get_ldrlims(ldrtxt, x_ldr)
     log_frac = np.log10(f_ldr+np.max(f_ldr)/100) - np.log10(np.max(f_ldr)/100)
-    plt.plot(x_ldr, log_frac)
 
+    if ax is None:
+        ax = plt.figure()
+    ax.plot(x_ldr, log_frac)
     x_vals = [ldr_gates[1],
               np.max([ldr_gates[0], np.min(x_ldr)]),
               np.max([ldr_gates[0], np.min(x_ldr)]),
               ldr_gates[1], ldr_gates[1]]
     y_vals = [np.log10(np.max(f_ldr)) * y for y in [0, 0, 0.5, 0.5, 0]]
-    plt.plot(x_vals, y_vals, 'r')
-    plt.xlim(ldr_lims)
+    ax.plot(x_vals, y_vals, 'r')
+    ax.set_xlim(ldr_lims)
     f_ldr_max = np.log10(np.max(f_ldr)) - np.log10(np.max(f_ldr)/100) + 0.1
-    plt.ylim([0, f_ldr_max])
-    plt.xlabel('LDRtxt intensity')
-    plt.ylabel('kernel density estimate')
+    ax.set_ylim([0, f_ldr_max])
+    ax.set_xlabel('LDRtxt intensity')
+    ax.set_ylabel('kernel density estimate')
     return ldr_gates, ldr_lims
 
 # Gating based on DNA content
@@ -86,7 +90,7 @@ def compute_log_dna(dna, x_dna=None):
     dna_upper_bounded = [d if d < dna_upper_bound else dna_upper_bound
                          for d in dna]
     dna_bounded = [d if d > dna_lower_bound else dna_lower_bound
-                   for d in dna in dna_upper_bounded]
+                   for d in dna_upper_bounded]
     log_dna = np.array([np.log10(d) for d in dna_bounded])
     return log_dna
 
@@ -98,7 +102,7 @@ def get_g1_location(log_dna, x_dna, ldrtxt, ldr_gates):
     log_dna_low_ldr = log_dna[(ldr_gates[1] >= ldrtxt) &
                               (ldrtxt >= ldr_gates[0])]
     f_dna_low_ldr = findpeaks.get_kde(log_dna_low_ldr, x_dna)
-    dna_peaks_amp, dna_peaks_loc, = findpeaks.findpeaks(f_dna_low_ldr.tolist())
+    dna_peaks_amp, dna_peaks_loc,_ = findpeaks.findpeaks(f_dna_low_ldr.tolist())
     # Remove lesser peaks
     dna_peaks_loc = dna_peaks_loc[dna_peaks_amp > np.max(dna_peaks_amp/10)]
     dna_peaks_amp = dna_peaks_amp[dna_peaks_amp > np.max(dna_peaks_amp/10)]
@@ -158,24 +162,26 @@ def get_dnalims(log_dna, x_dna=None):
     return dna_lims
 
 
-def plot_dna_gating(dna, ldrtxt, ldr_gates, x_dna=None):
+def plot_dna_gating(dna, ldrtxt, ldr_gates, x_dna=None, ax=None):
     if x_dna is None:
         x_dna = np.arange(2.5, 8, 0.02)
+    if ax is None:
+        ax = plt.figure()
     log_dna = compute_log_dna(dna, x_dna)
     f_dna = findpeaks.get_kde(np.array(log_dna), x_dna)
-    plt.plot(x_dna, f_dna, '-k')
+    ax.plot(x_dna, f_dna, '-k')
 
     log_dna_low_ldr = log_dna[(ldr_gates[1] >= ldrtxt) &
                               (ldrtxt >= ldr_gates[0])]
     f_dna_low_ldr = findpeaks.get_kde(log_dna_low_ldr, x_dna)
-    plt.plot(x_dna, f_dna_low_ldr, '--r')
+    ax.plot(x_dna, f_dna_low_ldr, '--r')
 
     g1_loc = get_g1_location(log_dna, x_dna, ldrtxt, ldr_gates)
     log_dna_g2_range = log_dna[(log_dna > (g1_loc + 0.4 * np.log10(2))) &
                                (ldr_gates[1] >= ldrtxt) &
                                (ldrtxt >= ldr_gates[0])]
     f_dna_g2_range = findpeaks.get_kde(log_dna_g2_range, x_dna)
-    plt.plot(x_dna, f_dna_g2_range, ':')
+    ax.plot(x_dna, f_dna_g2_range, ':')
 
     g1_g2_pos = get_g1_g2_position(log_dna, x_dna, ldrtxt, ldr_gates)
     g1_loc = g1_g2_pos[0]
@@ -188,18 +194,18 @@ def plot_dna_gating(dna, ldrtxt, ldr_gates, x_dna=None):
     y_vals = [np.max(f_dna) * y for y in [0, 1.02, 1.02, 0]]
     inner_x_vals = [dna_gates[i] for i in [1, 1, 2, 2]]
     outer_x_vals = [dna_gates[i] for i in [0, 0, 3, 3]]
-    plt.plot(inner_x_vals, y_vals, '-r', linewidth=2)
-    plt.plot(outer_x_vals, y_vals, '-r')
+    ax.plot(inner_x_vals, y_vals, '-r', linewidth=2)
+    ax.plot(outer_x_vals, y_vals, '-r')
     dna_lims = get_dnalims(log_dna, x_dna)
     dna_lims = [np.min((dna_lims[0], dna_gates[0]-0.1)),
                 np.max((dna_lims[1], dna_gates[3]+0.1))]
-    plt.xlabel('log10 (DNA)')
-    plt.ylabel('kernel density estimate')
-    plt.xlim(dna_lims)
+    ax.set_xlabel('log10 (DNA content)')
+    ax.set_ylabel('kernel density estimate')
+    ax.set_xlim(dna_lims)
     return dna_gates
 
 
-def plot_ldr_dna_scatter(dna, ldrtxt, x_dna=None, x_ldr=None):
+def plot_ldr_dna_scatter(dna, ldrtxt, x_dna=None, x_ldr=None, ax=None):
     if x_dna is None:
         x_dna = np.arange(2.5, 8, 0.02)
     if x_ldr is None:
@@ -208,10 +214,9 @@ def plot_ldr_dna_scatter(dna, ldrtxt, x_dna=None, x_ldr=None):
     log_dna = compute_log_dna(dna, x_dna)
     xy = np.vstack([log_dna, ldrtxt])
     z = gaussian_kde(xy)(xy)
-    plt.scatter(log_dna, ldrtxt, c=z, s=10)
-
+   
     ldr_gates = get_ldrgates(ldrtxt, x_ldr)
-    print(ldr_gates)
+    
     g1_g2_pos = get_g1_g2_position(log_dna, x_dna, ldrtxt, ldr_gates)
     g1_loc = g1_g2_pos[0]
     g2_loc = g1_g2_pos[1]
@@ -219,27 +224,33 @@ def plot_ldr_dna_scatter(dna, ldrtxt, x_dna=None, x_ldr=None):
         [g1_g2_pos[i] for i in [0, 0, 1, 1]],
         [(g2_loc-g1_loc) * s for s in [-1.5, -.9, 1.3, 2.2]])]
     ldr_gates = [0 if lg < 0 else lg for lg in ldr_gates]
-    plt.plot([dna_gates[i] for i in [0, 0, 3, 3, 0]],
+
+    # Plotting
+    # --------
+    if ax is None:
+        ax = plt.figure()
+    ax.scatter(log_dna, ldrtxt, c=z, s=10)    
+    ax.plot([dna_gates[i] for i in [0, 0, 3, 3, 0]],
              [ldr_gates[i] for i in [0, 1, 1, 0, 0]], '-r')
-    plt.plot([dna_gates[i] for i in [1, 1, 2, 2, 1]],
+    ax.plot([dna_gates[i] for i in [1, 1, 2, 2, 1]],
              [ldr_gates[i] for i in [0, 1, 1, 0, 0]],
              '-r', linewidth=2)
 
-    plt.plot(g1_g2_pos, [0, 0], 'xk', )
-    plt.plot(g1_g2_pos, [0, 0], 'ok', markersize=14, markerfacecolor='None')
-    plt.xlabel('log10 (DNA)')
-    plt.ylabel('LDRtxt intensity')
+    ax.plot(g1_g2_pos, [0, 0], 'xk', )
+    ax.plot(g1_g2_pos, [0, 0], 'ok', markersize=14, markerfacecolor='None')
+    ax.set_xlabel('log10 (DNA content)')
+    ax.set_ylabel('LDRtxt intensity')
     dna_lims = get_dnalims(log_dna, x_dna)
     dna_lims = [np.min((dna_lims[0], dna_gates[0]-0.1)),
                 np.max((dna_lims[1], dna_gates[3]+0.1))]
     ldr_lims = get_ldrlims(ldrtxt, x_ldr)
-    plt.xlim(dna_lims)
-    plt.ylim(ldr_lims)
+    ax.set_xlim(dna_lims)
+    ax.set_ylim(ldr_lims)
 
 
 def live_dead(ldrtxt, ldr_gates,
               dna=None, dna_gates=None,
-              x_ldr=None, x_dna=None):
+              x_ldr=None, x_dna=None, ax=None):
     # Notes to self
     # 1. alive = selected+others, where selected is within
     #             inner DNA gate and within LDR
@@ -258,6 +269,8 @@ def live_dead(ldrtxt, ldr_gates,
     alive = np.sum([1 for ot in outcome if ot >= 0])
     selected = 'DNA information unavailable'
     others = 'DNA information unavailable'
+    if ax is None:
+        ax = plt.figure()
 
     if dna is not None:
         log_dna = compute_log_dna(dna, x_dna)
@@ -271,10 +284,30 @@ def live_dead(ldrtxt, ldr_gates,
         dead = np.sum([1 for s in outcome if s == -1])
         selected = np.sum([1 for s in outcome if s == 1])
         others = np.sum([1 for s in outcome if s == 0])
-        plt.pie([selected, others, dead],
+        ax.pie([selected, others, dead],
                 labels=['selected', 'others', 'dead'],
                 explode=(0.1, 0.1, 0.1), autopct='%1.1f%%')
+        ax.axis('equal')
     else:
-        plt.pie([alive, dead], labels=['alive', 'dead'],
+        ax.pie([alive, dead], labels=['alive', 'dead'],
                 explode=(0.1, 0.1), autopct='%1.1f%%')
+        ax.axis('equal')
     return alive, dead, outcome
+
+
+def plot_summary(ldr, dna, well=None):
+    fig = plt.figure()
+    gridspec.GridSpec(2, 2)
+    ax1 = plt.subplot2grid((2, 2), (0, 0), colspan=1, rowspan=1)
+    ax2 = plt.subplot2grid((2, 2), (0, 1), colspan=1, rowspan=1)
+    ax3 = plt.subplot2grid((2, 2), (1, 0), colspan=1, rowspan=1)
+    ax4 = plt.subplot2grid((2, 2), (1, 1), colspan=1, rowspan=1)
+    ldr_gates, ldr_lims = plot_ldr_gating(ldr, ax=ax1)
+    dna_gates = plot_dna_gating(dna, ldr, ldr_gates, ax=ax2)
+    plot_ldr_dna_scatter(dna, ldr, ax=ax3)
+    a, d, o = live_dead(ldr, ldr_gates, dna, dna_gates, ax=ax4)
+    fig.tight_layout()
+    fig.set_size_inches(w=8, h=7)
+    if well:
+        fig.savefig('dead_cell_filter_%d.png' % well, dpi=300)
+    return fig
