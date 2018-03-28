@@ -588,6 +588,10 @@ def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna, dna_peaks,
                3 * ((log_dna >= dna_gates[2]) &  # G2
                     (log_dna < dna_gates[3]) &
                     (log_edu < edu_gates[0])))
+    fractions = {}
+    for state, val in zip(['other', 'G1', 'S', 'S_dropout', 'G2'],
+                          [0, 1, 2, 2.1, 3]):
+        fractions[state] = np.mean(cell_id == (val % 4))
     print('edu_gates', edu_gates)
     for ig in np.arange(1, 4):
         if sum(cell_id == ig) > 10:
@@ -610,7 +614,8 @@ def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna, dna_peaks,
             edu_peaks[ig-1] = np.mean((edu_gates[0], (ig == 2)*edu_gates[1]))
         edu_peaks[1] = np.max((edu_peaks[1], edu_gates[0] + 0.1))
     peaks = [dna_peaks, edu_peaks]
-    return cell_id, peaks
+    plt.pie(fractions.values(), labels=fractions.keys(),  autopct='%1.1f%%')
+    return fractions, cell_id, peaks
 
 
 def plot_dna_peaks():
