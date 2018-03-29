@@ -212,7 +212,7 @@ def get_2D_peak(h, x_dna, px_edu, nsmooth=5):
     f = smooth_1d(g.T, nsmooth).T
     peak_2d = imregionalmax(f)
     x, y = np.nonzero(peak_2d)
-    print(x, y)
+    
     pre_peak_candidates = np.array([x_dna[y], px_edu[x], f[peak_2d]]).T
     peak_candidates = pre_peak_candidates[
         ((px_edu[x] > (nsmooth + 2) * (px_edu[1] - px_edu[0])) &
@@ -429,8 +429,7 @@ def get_high_edu_peaks(log_edu, px_edu, edu_shift,
             edu_cutoff = px_edu[np.argmin(smooth.smooth(f_edu.T, nsmooth, 'flat').T +
                                           ((px_edu < low_edu_peaks) |
                                            (px_edu > high_edu_peaks)))]
-        print(edu_cutoff, high_edu_peaks)
-        print(2 * high_edu_peaks - edu_cutoff)
+        
         edu_lims = [px_edu[2],
                     np.min((2 * high_edu_peaks - edu_cutoff, px_edu[-2]))]
         # dna_s_loc = get_s_phase_dna_peaks(log_dna, x_dna, dna_g1_loc,
@@ -515,7 +514,7 @@ def get_dna_cutoff(log_dna, x_dna, log_edu, edu_cutoff,
         _, peak_loc, _ = findpeaks([-x for x in smooth_f_dna])
         dna_cutoff = x_dna[peak_loc[((x_dna[peak_loc] > dna_g1_loc) &
                                      (x_dna[peak_loc] < dna_g2_loc))]]
-        print(dna_cutoff)
+        
         if not np.any(dna_cutoff):
             dna_cutoff = np.min((np.max((dna_s_loc, dna_g1_loc + 0.02)),
                                  dna_g2_loc - 0.02))
@@ -572,10 +571,10 @@ def get_dna_gates(log_dna, x_dna, dna_g1_loc, dna_g2_loc, dna_cutoff,
     d2 = dna_g2_loc - dna_cutoff
     dna_lims = np.array([np.max((dna_g1_loc - 3 * d1, x_dna[1])),
                          np.min((dna_g2_loc + 3 * d2, x_dna[-2]))])
-    print('dna_lims1', dna_lims)
+    
 
     dna_gates = np.array([dna_g1_loc - d1, g1_lim, g2_lim, dna_g2_loc+d2])
-    print(dna_gates)
+    
     if dna_gates[1] - dna_gates[0] < g1_min_width:
         dna_gates[:2] = [x * g1_min_width + np.mean(dna_gates[:2])
                          for x in [-0.6, -.4]]
@@ -588,7 +587,7 @@ def get_dna_gates(log_dna, x_dna, dna_g1_loc, dna_g2_loc, dna_cutoff,
     dna_gl = list(dna_lims) + [g-0.1 for g in dna_gates]
     dna_gl2 = list(dna_lims) + [g+0.1 for g in dna_gates]
     dna_lims = [np.min(dna_gl), np.max(dna_gl2)]
-    print('dna_lims2', dna_lims)
+    
     return dna_gates, dna_lims
 
 
@@ -612,24 +611,24 @@ def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna, dna_peaks,
     for state, val in zip(['other', 'G1', 'S', 'S_dropout', 'G2'],
                           [0, 1, 2, 2.1, 3]):
         fractions[state] = np.mean(cell_id == (val % 4))
-    print('edu_gates', edu_gates)
+    
     for ig in np.arange(1, 4):
         if sum(cell_id == ig) > 10:
-            print(ig, 'pass')
+            
             f_dna = get_kde(log_dna[cell_id == ig], x_dna)
             _, dna_loc, _ = findpeaks(
                 smooth.smooth(f_dna, 3 * nsmooth).tolist(),
                 npeaks=1)
             dna_peaks[ig-1] = x_dna[dna_loc]
-            print(ig, dna_loc)
+            
             f_edu = get_kde(log_edu[cell_id == ig], px_edu)
             _, edu_loc, _ = findpeaks(
                 smooth.smooth(f_edu, 3 * nsmooth).tolist(),
                 npeaks=1)
             edu_peaks[ig-1] = px_edu[edu_loc]
-            print('edu_gates', ig, edu_gates)
+            
         else:
-            print(ig, 'fail')
+            
             dna_peaks[ig-1] = np.mean(dna_gates[ig-1:2])
             edu_peaks[ig-1] = np.mean((edu_gates[0], (ig == 2)*edu_gates[1]))
         edu_peaks[1] = np.max((edu_peaks[1], edu_gates[0] + 0.1))
@@ -691,12 +690,14 @@ def plot_summary(dna, edu, x_dna=None, px_edu=None, well=None):
                                             phase_candidates, 5, ax=ax2)
     dna_gates, dna_lims = get_dna_gates(log_dna, x_dna, dna_g1_loc, dna_g2_loc,
                                         dna_cutoff, log_edu, edu_cutoff)
+    ax2.plot([dna_gates[i] for i in [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3]],
+             [np.max(ax2.get_ylim()) * i for i in [0, 1, np.nan, 0, 1, np.nan,
+                                               0, 1, np.nan, 0, 1]],
+             '--', color='red')
     ax2.set_xlim(dna_lims)
 
     dna_peaks = [dna_g1_loc, dna_s_loc, dna_g2_loc]
     edu_peaks = edu_peaks + [edu_peaks[0]]
-    
-    
 
     plot_2D_peaks(log_dna, x_dna, edu, px_edu,
                   f, peak_candidates, phase_candidates,
@@ -709,7 +710,7 @@ def plot_summary(dna, edu, x_dna=None, px_edu=None, well=None):
                          dna_lims, edu_lims,
                          x_dna=None, px_edu=None,
                          ax=ax4)
-    
+
     fractions, cell_id, peaks = evaluate_cell_cycle_phase(log_dna, dna_gates,
                                                           x_dna, dna_peaks,
                                                           log_edu, edu_gates,
@@ -720,12 +721,3 @@ def plot_summary(dna, edu, x_dna=None, px_edu=None, well=None):
     if well:
         fig.savefig('cell_cycle_phases_%s.png' % well, dpi=300)
     return fractions, cell_id
-
-
-    
-    # plt.figure(dna_fig.number)
-    # ax.plot([dna_gates[i] for i in [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3]],  # 
-    #         [np.max(plt.ylim()) * i for i in [0, 1, np.nan, 0, 1, np.nan,
-    #                                           0, 1, np.nan, 0, 1]],
-    #         '--', color='red')
-    # ax.set_xlim(dna_lims)
