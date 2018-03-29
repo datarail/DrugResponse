@@ -1,23 +1,22 @@
-from findpeaks import findpeaks, get_kde
+from cell_cycle_gating.findpeaks import findpeaks, get_kde
 import numpy as np
 from scipy.stats.mstats import mquantiles as quantile
 import matplotlib.pyplot as plt
-import smooth
+from cell_cycle_gating import smooth
 from scipy.stats import gaussian_kde
 import math
-import pandas as pd
-import accum
+from cell_cycle_gating import accum
 from scipy.ndimage.filters import maximum_filter
 from scipy.spatial.distance import pdist, squareform
 from scipy.stats import norm
 import matplotlib.gridspec as gridspec
 
 
-df = pd.read_table('training_sample_object_level.txt')
-edu = df['Nuclei Selected - EdUINT'].tolist()
-edu = np.array(edu)
-dna = df['Nuclei Selected - DNAcontent'].tolist()
-dna = np.array(dna)
+# df = pd.read_table('training_sample_object_level.txt')
+# edu = df['Nuclei Selected - EdUINT'].tolist()
+# edu = np.array(edu)
+# dna = df['Nuclei Selected - DNAcontent'].tolist()
+# dna = np.array(dna)
 
 
 # Gating based on EdU
@@ -52,8 +51,11 @@ def get_edu_gates(edu, px_edu, plotting=False, ax=None):
         f2_edu = get_kde(edu_higher, x_edu, bandwidth=510)
         f2_edu_neg = [-x for x in f2_edu]
         _, peak_trough, _ = findpeaks(f2_edu_neg, npeaks=2)
-        peak_trough = x_edu[math.ceil(
-            peak_trough[np.argmin(np.abs([x - 500 for x in peak_trough]))])]
+        try:
+            peak_trough = x_edu[math.ceil(
+                peak_trough[np.argmin(np.abs([x - 500 for x in peak_trough]))])]
+        except ValueError:
+            peak_trough = 0
         peak_trough = np.max([peak_trough, peak_loc+3*peak_width])
     else:
         peak_trough = peak_loc + 3 * peak_width
@@ -512,9 +514,10 @@ def get_dna_cutoff(log_dna, x_dna, log_edu, edu_cutoff,
         f_dna = get_kde(log_dna[log_edu < edu_cutoff], x_dna)
         smooth_f_dna = smooth.smooth(f_dna, nsmooth, 'flat')
         _, peak_loc, _ = findpeaks([-x for x in smooth_f_dna])
+        peak_loc = np.array([p for p in peak_loc if p < len(x_dna)])
         dna_cutoff = x_dna[peak_loc[((x_dna[peak_loc] > dna_g1_loc) &
                                      (x_dna[peak_loc] < dna_g2_loc))]]
-        
+
         if not np.any(dna_cutoff):
             dna_cutoff = np.min((np.max((dna_s_loc, dna_g1_loc + 0.02)),
                                  dna_g2_loc - 0.02))

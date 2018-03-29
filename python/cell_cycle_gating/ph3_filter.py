@@ -1,10 +1,9 @@
-import pandas as pd
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-import smooth
+from cell_cycle_gating import smooth
 from scipy.stats.mstats import mquantiles as quantile
-from findpeaks import get_kde, findpeaks
+from cell_cycle_gating.findpeaks import get_kde, findpeaks
 import matplotlib.gridspec as gridspec
 
 
@@ -48,6 +47,8 @@ def get_ph3_gates(ph3, cell_identity, x_ph3=None, ph3_cutoff=None):
     # --------------
     f_ph3_neg = [-x for x in f_ph3[peak_loc:]]
     _, peak_loc_min, _ = findpeaks(f_ph3_neg, npeaks=1)
+    if not np.any(peak_loc_min):
+        peak_loc_min = np.array([0])
     peak_loc_min += peak_loc - 1
     ph3_cutoff = x_ph3[math.ceil(np.max((
         np.min((peak_loc_min[0], peak_loc + 9 * peak_width)),

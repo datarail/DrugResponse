@@ -1,9 +1,9 @@
-import findpeaks
+from cell_cycle_gating import findpeaks
 import numpy as np
 from scipy.stats.mstats import mquantiles as quantile
 import matplotlib.pyplot as plt
 # from itertools import compress
-import smooth
+from cell_cycle_gating import smooth
 from scipy.stats import gaussian_kde
 import matplotlib.gridspec as gridspec
 
