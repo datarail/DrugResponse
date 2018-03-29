@@ -309,5 +309,5 @@ def plot_summary(ldr, dna, well=None):
     fig.tight_layout()
     fig.set_size_inches(w=8, h=7)
     if well:
-        fig.savefig('dead_cell_filter_%d.png' % well, dpi=300)
+        fig.savefig('dead_cell_filter_%s.png' % well, dpi=300)
     return fig
