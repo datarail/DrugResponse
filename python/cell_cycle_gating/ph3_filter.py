@@ -20,14 +20,16 @@ def compute_log_ph3(ph3, x_ph3=None):
     return log_ph3
 
 
-
 def get_ph3_gates(ph3, cell_identity, x_ph3=None, ph3_cutoff=None):
     if x_ph3 is None:
         x_ph3 = np.arange(2.5, 8, 0.02)
     log_ph3 = compute_log_ph3(ph3, x_ph3)
     if np.any((cell_identity == 1) | (cell_identity == 3)):
         log_ph3_g12 = log_ph3[(cell_identity == 1) | (cell_identity == 3)]
-        f_ph3 = get_kde(log_ph3_g12, x_ph3, 4 * (x_ph3[1] - x_ph3[0]))
+        if len(log_ph3_g12) >= 10:
+            f_ph3 = get_kde(log_ph3_g12, x_ph3, 4 * (x_ph3[1] - x_ph3[0]))
+        else:
+            f_ph3 = get_kde(log_ph3, x_ph3, 4 * (x_ph3[1] - x_ph3[0]))
     else:
         f_ph3 = get_kde(log_ph3, x_ph3, 4 * (x_ph3[1] - x_ph3[0]))
     # if not ph3_cutoff or np.mean(log_ph3 > ph3_cutoff):
