@@ -58,10 +58,6 @@ def run(object_level_directory):
             fractions['alive'] = a
             fractions['dead'] = d
             df_summary = df_summary.append(fractions, ignore_index=True)
-            if (i + 1) % nb_plots_per_page == 0 or (i + 1) == nb_plots:
-                plt.tight_layout()
-                pdf_pages.savefig(fig)
-
         except ValueError:
             print(well, ' ValueError')
             pass
@@ -71,6 +67,9 @@ def run(object_level_directory):
         except IndexError:
             print(well, 'IndexError')
             pass
+        if (i + 1) % nb_plots_per_page == 0 or (i + 1) == nb_plots:
+            plt.tight_layout()
+            pdf_pages.savefig(fig)
     pdf_pages.close()
     df_summary = df_summary[['well', 'alive', 'dead',
                              'G1', 'S', 'G2', 'M',
