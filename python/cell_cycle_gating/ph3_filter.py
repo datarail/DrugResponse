@@ -27,7 +27,12 @@ def get_ph3_gates(ph3, cell_identity, x_ph3=None, ph3_cutoff=None):
     if np.any((cell_identity == 1) | (cell_identity == 3)):
         log_ph3_g12 = log_ph3[(cell_identity == 1) | (cell_identity == 3)]
         if len(log_ph3_g12) >= 10:
-            f_ph3 = get_kde(log_ph3_g12, x_ph3, 4 * (x_ph3[1] - x_ph3[0]))
+            try:
+                f_ph3 = get_kde(log_ph3_g12, x_ph3, 4 * (x_ph3[1] - x_ph3[0]))
+            except np.linalg.LinAlgError as e:
+                if 'Singular matrix' in str(e):
+                    f_ph3 = get_kde(log_ph3, x_ph3, 4 * (x_ph3[1] - x_ph3[0]))
+
         else:
             f_ph3 = get_kde(log_ph3, x_ph3, 4 * (x_ph3[1] - x_ph3[0]))
     else:
@@ -38,19 +43,20 @@ def get_ph3_gates(ph3, cell_identity, x_ph3=None, ph3_cutoff=None):
     min_idx = np.nonzero(np.cumsum(f_ph3)/np.sum(f_ph3) > 0.3)[0][0] - 5
     if np.any(peak_loc > min_idx):
         peak_width = peak_width[np.nonzero(peak_width >= min_idx)[0][0]]
-        peak_loc = np.max((peak_loc[np.nonzero(peak_loc >= min_idx)[0][0]],
-                           np.nonzero(np.cumsum(f_ph3)/np.sum(f_ph3) > .3)[0][0]
-                           ))
+        peak_loc = np.max(
+            (peak_loc[np.nonzero(peak_loc >= min_idx)[0][0]],
+             np.nonzero(np.cumsum(f_ph3)/np.sum(f_ph3) > .3)[0][0])
+        )
     else:
         peak_loc = min_idx
         peak_width = np.max(peak_width)
-    
+
     # find miniminum
     # --------------
     f_ph3_neg = [-x for x in f_ph3[peak_loc:]]
     _, peak_loc_min, _ = findpeaks(f_ph3_neg, npeaks=1)
-    if not np.any(peak_loc_min):
-        peak_loc_min = np.array([0])
+    if not np.any(peak_loc_min):  # Check
+        peak_loc_min = np.array([0])  # Check
     peak_loc_min += peak_loc - 1
     ph3_cutoff = x_ph3[math.ceil(np.max((
         np.min((peak_loc_min[0], peak_loc + 9 * peak_width)),
@@ -75,10 +81,9 @@ def evaluate_Mphase(log_ph3, ph3_cutoff, cell_identity, ax=None):
     for state, val in zip(['other', 'G1', 'S', 'S_dropout', 'G2', 'M'],
                           [0, 1, 2, 2.1, 3, 4]):
         fractions[state] = np.mean(np.floor(ph3_cell_identity) == (val % 5))
-    if ax is None:
-        ax = plt.figure()
-    ax.pie(fractions.values(), labels=fractions.keys(),  autopct='%1.1f%%')
-    ax.axis('equal')
+    if ax is not None:
+        ax.pie(fractions.values(), labels=fractions.keys(),  autopct='%1.1f%%')
+        ax.axis('equal')
     return fractions
 
 
@@ -93,16 +98,17 @@ def plot_summary(ph3, cell_identity, x_ph3=None, ph3_cutoff=None, well=None):
     ax2 = plt.subplot2grid((1, 2), (0, 1), colspan=1, rowspan=1)
 
     f_ph3, ph3_cutoff, ph3_lims = get_ph3_gates(ph3, cell_identity)
-    ax1.plot(x_ph3, np.log10(f_ph3 + np.max(f_ph3)/100) - np.log10(np.max(f_ph3)/100))
+    ax1.plot(x_ph3, np.log10((f_ph3 + np.max(f_ph3)/100) -
+                             np.log10(np.max(f_ph3)/100)))
 
     fall = get_kde(log_ph3, x_ph3, 2.5 * (x_ph3[1] - x_ph3[0]))
-    ax1.plot(x_ph3, np.log10(fall + np.max(fall)/100) - np.log10(np.max(fall)/100), '--')
+    ax1.plot(x_ph3, np.log10((fall + np.max(fall)/100) -
+                             np.log10(np.max(fall)/100)), '--')
 
     ax1.plot([ph3_cutoff, ph3_cutoff], [0, np.log10(np.max(f_ph3))], '-')
-                
-
     ax1.set_xlim(ph3_lims)
-    ax1.set_ylim([0, np.log10(np.max(f_ph3)) - np.log10(np.max(f_ph3)/100)+0.1])
+    ax1.set_ylim([0,
+                  np.log10(np.max(f_ph3)) - np.log10(np.max(f_ph3)/100)+0.1])
     ax1.set_xlabel('log10 (pH3)')
     ax1.set_ylabel('kernel density estimate')
 
