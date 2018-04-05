@@ -162,26 +162,21 @@ def get_dnalims(log_dna, x_dna=None):
     return dna_lims
 
 
-def plot_dna_gating(dna, ldrtxt, ldr_gates, x_dna=None, ax=None):
+def get_dna_gating(dna, ldrtxt, ldr_gates, x_dna=None, ax=None):
     if x_dna is None:
         x_dna = np.arange(2.5, 8, 0.02)
-    # if ax is None:
-    #     ax = plt.figure()
     log_dna = compute_log_dna(dna, x_dna)
     f_dna = findpeaks.get_kde(np.array(log_dna), x_dna)
-    
 
     log_dna_low_ldr = log_dna[(ldr_gates[1] >= ldrtxt) &
                               (ldrtxt >= ldr_gates[0])]
     f_dna_low_ldr = findpeaks.get_kde(log_dna_low_ldr, x_dna)
-    
 
     g1_loc = get_g1_location(log_dna, x_dna, ldrtxt, ldr_gates)
     log_dna_g2_range = log_dna[(log_dna > (g1_loc + 0.4 * np.log10(2))) &
                                (ldr_gates[1] >= ldrtxt) &
                                (ldrtxt >= ldr_gates[0])]
     f_dna_g2_range = findpeaks.get_kde(log_dna_g2_range, x_dna)
-    
 
     g1_g2_pos = get_g1_g2_position(log_dna, x_dna, ldrtxt, ldr_gates)
     g1_loc = g1_g2_pos[0]
@@ -194,11 +189,11 @@ def plot_dna_gating(dna, ldrtxt, ldr_gates, x_dna=None, ax=None):
     y_vals = [np.max(f_dna) * y for y in [0, 1.02, 1.02, 0]]
     inner_x_vals = [dna_gates[i] for i in [1, 1, 2, 2]]
     outer_x_vals = [dna_gates[i] for i in [0, 0, 3, 3]]
-    
+
     dna_lims = get_dnalims(log_dna, x_dna)
     dna_lims = [np.min((dna_lims[0], dna_gates[0]-0.1)),
                 np.max((dna_lims[1], dna_gates[3]+0.1))]
-    if ax is not None:        
+    if ax is not None:
         ax.plot(x_dna, f_dna_low_ldr, '--r')
         ax.plot(x_dna, f_dna, '-k')
         ax.plot(x_dna, f_dna_g2_range, ':')
@@ -274,7 +269,6 @@ def live_dead(ldrtxt, ldr_gates,
     alive = np.sum([1 for ot in outcome if ot >= 0])
     selected = 'DNA information unavailable'
     others = 'DNA information unavailable'
-   
 
     if dna is not None:
         log_dna = compute_log_dna(dna, x_dna)
@@ -290,8 +284,8 @@ def live_dead(ldrtxt, ldr_gates,
         others = np.sum([1 for s in outcome if s == 0])
         if ax is not None:
             ax.pie([selected, others, dead],
-                    labels=['selected', 'others', 'dead'],
-                    explode=(0.1, 0.1, 0.1), autopct='%1.1f%%')
+                   labels=['selected', 'others', 'dead'],
+                   explode=(0.1, 0.1, 0.1), autopct='%1.1f%%')
             ax.axis('equal')
     else:
         if ax is not None:
@@ -309,7 +303,7 @@ def plot_summary(ldr, dna, well=None):
     ax3 = plt.subplot2grid((2, 2), (1, 0), colspan=1, rowspan=1)
     ax4 = plt.subplot2grid((2, 2), (1, 1), colspan=1, rowspan=1)
     ldr_gates, ldr_lims = plot_ldr_gating(ldr, ax=ax1)
-    dna_gates = plot_dna_gating(dna, ldr, ldr_gates, ax=ax2)
+    dna_gates = get_dna_gating(dna, ldr, ldr_gates, ax=ax2)
     plot_ldr_dna_scatter(dna, ldr, ax=ax3)
     a, d, o = live_dead(ldr, ldr_gates, dna, dna_gates, ax=ax4)
     fig.tight_layout()
