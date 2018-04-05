@@ -12,7 +12,7 @@ from scipy.stats import norm
 import matplotlib.gridspec as gridspec
 
 
-def get_edu_gates(edu, px_edu=None, plotting=False, ax=None):
+def get_edu_gates(edu, px_edu=None, plot=False, ax=None):
     """ Returns estimate of max EdU for G1 gating and min EdU for S phase gating
     Parameters
     ----------
@@ -1037,7 +1037,8 @@ def plot_summary(dna, edu, fig, x_dna=None, px_edu=None,
     log_dna = compute_log_dna(dna, x_dna)
 
     edu_shift, offset_edu, edu_g1_max, edu_s_min = get_edu_gates(edu, px_edu,
-                                                                 plotting=False, ax=ax1)
+                                                                 plot=False,
+                                                                 ax=ax1)
     log_edu = compute_log_edu(edu, px_edu, offset_edu)
     h = get_2d_histogram(log_dna, x_dna, log_edu, px_edu)
     g = smooth_1d(h, 5)
@@ -1071,8 +1072,8 @@ def plot_summary(dna, edu, fig, x_dna=None, px_edu=None,
                                         dna_cutoff, log_edu, edu_cutoff)
     if ax2 is not None:
         ax2.plot([dna_gates[i] for i in [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3]],
-                 [np.max(ax2.get_ylim()) * i for i in [0, 1, np.nan, 0, 1, np.nan,
-                                                       0, 1, np.nan, 0, 1]],
+                 [np.max(ax2.get_ylim()) * i
+                  for i in [0, 1, np.nan, 0, 1, np.nan, 0, 1, np.nan, 0, 1]],
                  '--', color='red')
         ax2.set_xlim(dna_lims)
 
@@ -1084,7 +1085,7 @@ def plot_summary(dna, edu, fig, x_dna=None, px_edu=None,
                   dna_gates, dna_lims,
                   edu_gates, edu_lims,
                   nsmooth=5, ax=ax3)
-    
+
     plot_edu_dna_scatter(dna, edu, offset_edu,
                          dna_gates, edu_gates,
                          dna_lims, edu_lims,
@@ -1097,8 +1098,9 @@ def plot_summary(dna, edu, fig, x_dna=None, px_edu=None,
                                                           px_edu, edu_peaks,
                                                           nsmooth=5, ax=ax5)
     ax4.set_title(well)
-    #fig.tight_layout()
-    #fig.set_size_inches(w=10, h=6)
-    # if well:
-    #    fig.savefig('cell_cycle_phases_%s.png' % well, dpi=300)
+    if plot == 'all':
+        fig.tight_layout()
+        fig.set_size_inches(w=10, h=6)
+        if well:
+            fig.savefig('cell_cycle_phases_%s.png' % well, dpi=300)
     return fractions, cell_id
