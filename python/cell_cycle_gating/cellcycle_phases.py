@@ -12,19 +12,33 @@ from scipy.stats import norm
 import matplotlib.gridspec as gridspec
 
 
-# df = pd.read_table('training_sample_object_level.txt')
-# edu = df['Nuclei Selected - EdUINT'].tolist()
-# edu = np.array(edu)
-# dna = df['Nuclei Selected - DNAcontent'].tolist()
-# dna = np.array(dna)
-
 
 # Gating based on EdU
 # -------------------
 
 
-def get_edu_gates(edu, px_edu, plotting=False, ax=None):
+def get_edu_gates(edu, px_edu=None, plotting=False, ax=None):
     """ Returns estimate of max EdU for G1 gating and min EdU for S phase gating
+    Parameters
+    ----------
+    edu: 1D array
+         edu intensities across all cells in a given well
+    px_edu: 1D array
+         uniformly spaced grid of expected edu distribution
+    plotting: boolean
+         plots summary of edu gating if set to True
+    ax: subplot object
+         passes subplot object specifying location on grid
+    Returns
+    -------
+    edu_shift: float
+        difference between G1/2 and S phases
+    offset_edu: float
+    
+    edu_g1_max: float
+        G1 gating based on  EdU intensity
+    edu_s_min: float
+        S phase gating based on EdU intensity
     """
     if px_edu is None:
         px_edu = np.arange(-0.2, 5.3, .02)
@@ -54,7 +68,10 @@ def get_edu_gates(edu, px_edu, plotting=False, ax=None):
         _, peak_trough, _ = findpeaks(f2_edu_neg, npeaks=2)
         try:
             peak_trough = x_edu[math.ceil(
-                peak_trough[np.argmin(np.abs([x - 500 for x in peak_trough]))])]
+                peak_trough[np.argmin(
+                    np.abs([x - 500 for x in peak_trough])
+                )]
+            )]
         except ValueError:
             peak_trough = 0
         peak_trough = np.max([peak_trough, peak_loc+3*peak_width])
@@ -89,7 +106,7 @@ def get_edu_gates(edu, px_edu, plotting=False, ax=None):
     # --------
     if plotting:
         if ax is None:
-            ax = plt.figure()            
+            ax = plt.figure()
         idx = np.random.permutation(len(edu))
         idx = idx[:np.min((len(edu), 1000))]
         edu = np.array(edu)
@@ -98,12 +115,12 @@ def get_edu_gates(edu, px_edu, plotting=False, ax=None):
         ax.plot(x_edu, np.max(px_edu) * (f_edu/np.max(f_edu)), 'k-')
         ax.plot(x_edu, np.max(px_edu) * (f2_edu/np.max(f2_edu)), 'k--')
         ax.plot([-200, 300, np.nan, -100, 500],
-                 [edu_s_min, edu_s_min, np.nan,
-                  edu_shift+np.log10(np.max((peak_loc-offset_edu, 1))),
-                  edu_shift+np.log10(np.max((peak_loc-offset_edu, 1)))], '-r')
+                [edu_s_min, edu_s_min, np.nan,
+                 edu_shift+np.log10(np.max((peak_loc-offset_edu, 1))),
+                 edu_shift+np.log10(np.max((peak_loc-offset_edu, 1)))], '-r')
         ax.plot([offset_edu, offset_edu], [0, 5], ':r')
         ax.plot([100, peak_trough, peak_trough],
-                 [edu_g1_max, edu_g1_max, 0], '--r')
+                [edu_g1_max, edu_g1_max, 0], '--r')
         ax.set_ylim((px_edu[0], px_edu[-1]))
         ax.set_xlim([-200, np.max((peak_loc + 5 * peak_width, 500))])
         ax.set_xlabel('EdU intensity')
@@ -112,6 +129,18 @@ def get_edu_gates(edu, px_edu, plotting=False, ax=None):
 
 
 def compute_log_dna(dna, x_dna=None):
+    """ computes log of DNA content bounded by x_dna[2], x_dna[-3]
+    Parameters
+    ----------
+    dna: 1D array
+        DNA content of cells in a given well
+    x_dna: 1D array
+        Expected distribution of DNA content (used as x-axis grid)
+    Return
+    ------
+    log_dna: 1D array
+        log transformed DNA content
+    """
     if x_dna is None:
         x_dna = np.arange(2.5, 8, 0.02)
     dna_upper_bound = 10 ** x_dna[-3]
@@ -125,6 +154,18 @@ def compute_log_dna(dna, x_dna=None):
 
 
 def compute_log_edu(edu, px_edu, offset_edu):
+    """ computes log of EdU intensity bounded by px_edu[2], px_edu[-3]
+    Parameters
+    ----------
+    edu: 1D array
+        EdU intensity of cells in a given well
+    px_edu: 1D array
+        Expected distribution of EdU intensity (used as x-axis grid)
+    Return
+    ------
+    log_edu: 1D array
+        log transformed EdU intensity
+    """
     edu_upper_bound = 10 ** px_edu[-3]
     edu_lower_bound = 10 ** px_edu[2]
     edu_offsetted = [e - offset_edu for e in edu]
@@ -141,6 +182,33 @@ def plot_edu_dna_scatter(dna, edu, offset_edu,
                          dna_lims, edu_lims,
                          x_dna=None, px_edu=None,
                          ax=None):
+    """ Plots EdU and DNA scatter plot, plots gates pre-computed on
+        EdU and DNA content
+    Parameters
+    ----------
+    dna: 1D array
+
+    edu: 1D array
+
+    offset_edu: float
+
+    dna_gates: list of float
+
+    dna_lims: list of float
+
+    edu_gates: list of float
+
+    edu_lims: list of float
+
+    x_dna: 1D array
+
+    px_edu: 1D array
+
+    ax: subplot object
+    Returns
+    -------
+
+    """
     if x_dna is None:
         x_dna = np.arange(2.5, 8, 0.02)
     if px_edu is None:
@@ -149,16 +217,17 @@ def plot_edu_dna_scatter(dna, edu, offset_edu,
     log_edu = compute_log_edu(edu, px_edu, offset_edu)
     xy = np.vstack([log_dna, log_edu])
     z = gaussian_kde(xy)(xy)
-    #scatter_fig = plt.figure()
-    ax.scatter(log_dna, log_edu, c=z, s=10)
-    ax.plot([dna_gates[i] for i in [0, 0, 3, 3, 0, 0, 1, 1, 0, 2, 2, 3]],
-             [-1, edu_gates[1], edu_gates[1], -1, np.nan, edu_gates[0], edu_gates[0],
-              -1, np.nan, -1, edu_gates[0], edu_gates[0]], '--', color='red')
-    ax.set_xlabel('log10 (DNA content)')
-    ax.set_ylabel('log10 (EdU)')
-    ax.set_xlim(dna_lims)
-    ax.set_ylim(edu_lims)
-    # return scatter_fig
+    if ax is not None:
+        ax.scatter(log_dna, log_edu, c=z, s=10)
+        ax.plot([dna_gates[i] for i in [0, 0, 3, 3, 0, 0, 1, 1, 0, 2, 2, 3]],
+                [-1, edu_gates[1], edu_gates[1], -1,
+                 np.nan, edu_gates[0], edu_gates[0],
+                 -1, np.nan, -1, edu_gates[0], edu_gates[0]],
+                '--', color='red')
+        ax.set_xlabel('log10 (DNA content)')
+        ax.set_ylabel('log10 (EdU)')
+        ax.set_xlim(dna_lims)
+        ax.set_ylim(edu_lims)
 
 # Find peaks in 2-dimensions (EdU and DNA)
 # ----------------------------------------
@@ -215,7 +284,7 @@ def get_2D_peak(h, x_dna, px_edu, nsmooth=5):
     f = smooth_1d(g.T, nsmooth).T
     peak_2d = imregionalmax(f)
     x, y = np.nonzero(peak_2d)
-    
+
     pre_peak_candidates = np.array([x_dna[y], px_edu[x], f[peak_2d]]).T
     peak_candidates = pre_peak_candidates[
         ((px_edu[x] > (nsmooth + 2) * (px_edu[1] - px_edu[0])) &
@@ -243,17 +312,7 @@ def plot_2D_peaks(log_dna, x_dna, edu, px_edu,
                   dna_gates, dna_lims,
                   edu_gates, edu_lims,
                   nsmooth=5, ax=None):
-    # edu_shift, offset_edu, edu_g1_max, edu_s_min = get_edu_gates(edu, px_edu)
-    # log_edu = compute_log_edu(edu, px_edu, offset_edu)
-    # h = get_2d_histogram(log_dna, x_dna, log_edu, px_edu)
-    # g = smooth_1d(h, nsmooth)
-    # f = smooth_1d(g.T, nsmooth).T
-    # peak_candidates = iterate_2D_peak(h, x_dna, px_edu, nsmooth)
-    # edu_shift, offset_edu, edu_g1_max, edu_s_min = get_edu_gates(edu, px_edu)
-    # phase_candidates = get_phase_candidates(peak_candidates,
-    #                                        edu_shift, edu_s_min)
     if ax is not None:
-        
         ax.pcolor(x_dna, px_edu, f)
         ax.plot(peak_candidates[:, 0], peak_candidates[:, 1], 'ok',
                 markersize=4, markerfacecolor='None')
@@ -360,14 +419,13 @@ def get_g1_dna_peak(log_dna, x_dna, log_edu, edu_shift,
             dna_g1_loc = np.min(dna_g1_loc)
     if not np.any(dna_g1_loc):
         dna_g1_loc = np.nanmin(phase_candidates[:, 0] - np.log10(1.2))
-    # if ax is None:    
-    #     #ax = plt.figure('dna_figure')
+
     if ax is not None:
         ax.plot(x_dna, f_dna)
         ax.plot(dna_g1_loc, .1, 'xk')
         ax.set_xlabel('log (DNA content)')
         ax.set_ylabel('kernel density estimate')
-    return dna_g1_loc# , dna_fig
+    return dna_g1_loc
 
 
 # Working with EdU channel
