@@ -30,9 +30,9 @@ def get_ph3_gates(ph3, cell_identity, x_ph3=None, ph3_cutoff=None):
             try:
                 f_ph3 = get_kde(log_ph3_g12, x_ph3, 4 * (x_ph3[1] - x_ph3[0]))
             except np.linalg.LinAlgError as e:
-                if 'Singular matrix' in str(e):
+                print(str(e))
+                if 'singular matrix' in str(e):
                     f_ph3 = get_kde(log_ph3, x_ph3, 4 * (x_ph3[1] - x_ph3[0]))
-
         else:
             f_ph3 = get_kde(log_ph3, x_ph3, 4 * (x_ph3[1] - x_ph3[0]))
     else:
