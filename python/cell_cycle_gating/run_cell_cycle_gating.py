@@ -17,10 +17,10 @@ def run(object_level_directory):
                           if 'Nuclei Selected[0].txt' in s]
 
     df_summary = pd.DataFrame()
-    nb_plots=len(object_level_files)
+    nb_plots = len(object_level_files)
     pdf_pages = PdfPages('summary_%s.pdf' % object_level_directory)
     nb_plots_per_page = 10
-    nb_pages = int(np.ceil(nb_plots / float(nb_plots_per_page)))
+    # nb_pages = int(np.ceil(nb_plots / float(nb_plots_per_page)))
     for i, file in enumerate(object_level_files[:nb_plots]):
         if i % nb_plots_per_page == 0:
             fig = plt.figure(figsize=(8.27, 11.69), dpi=100)
@@ -38,13 +38,14 @@ def run(object_level_directory):
         ldr = ldr[edu_notnan]
         ph3 = ph3[edu_notnan]
 
-        # Get live dead
-        ldr_gates = dcf.get_ldrgates(ldr)
-        dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
-        a, d, _ = dcf.live_dead(ldr, ldr_gates, dna, dna_gates)
         try:
+            # Get live dead
+            ldr_gates = dcf.get_ldrgates(ldr)
+            dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
+            a, d, _ = dcf.live_dead(ldr, ldr_gates, dna, dna_gates)
             # Get phases based on DNA and EdU
-            fractions, cell_identity = cc.plot_summary(dna, edu, fig, well=well,
+            fractions, cell_identity = cc.plot_summary(dna, edu, fig,
+                                                       well=well,
                                                        plot='scatter',
                                                        plot_num=i)
 
