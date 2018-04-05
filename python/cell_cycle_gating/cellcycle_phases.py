@@ -99,7 +99,7 @@ def get_edu_gates(edu, px_edu=None, plot=False, ax=None):
 
     # Plotting
     # --------
-    if plotting:
+    if plot:
         if ax is None:
             ax = plt.figure()
         idx = np.random.permutation(len(edu))
@@ -599,7 +599,7 @@ def get_high_edu_peaks(log_edu, px_edu, edu_shift,
     high_edu_bool = ((log_dna > dna_g1_loc - np.log10(2)/2) &
                      (log_dna < dna_g1_loc + np.log10(2) * 1.5) &
                      (log_edu > low_edu_peaks + edu_shift * 0.8))
-    if np.any(high_edu_bool):
+    if (np.any(high_edu_bool) | sum(high_edu_bool) >= 10):
         f_edu_high = get_kde(log_edu[high_edu_bool], px_edu)
         edu_amp, edu_loc, _ = findpeaks(smooth.smooth(
             f_edu_high, nsmooth, 'flat').tolist())
