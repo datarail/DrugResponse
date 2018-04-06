@@ -1,4 +1,4 @@
-from cell_cycle_gating import findpeaks
+from cell_cycle_gating.findpeaks import get_kde, findpeaks
 import numpy as np
 from scipy.stats.mstats import mquantiles as quantile
 import matplotlib.pyplot as plt
@@ -7,23 +7,30 @@ from cell_cycle_gating import smooth
 from scipy.stats import gaussian_kde
 import matplotlib.gridspec as gridspec
 
-#  Gating based on LDR
-#  --------------------
-# mx = np.max(ldrtxt.tolist())+0.01
-# x_ldr = np.arange(-0.01, mx, 0.0002)
-
 
 def get_ldrgates(ldrtxt, x_ldr=None):
+    """ Gating based on ldr intensities
+    Parameters
+    ----------
+    ldrtxt: 1d array
+        ldr txt feature across all cells in a well
+    x_ldr: 1d array
+        uniformly distributed 1d grid based on expected
+        range of ldr txt
+    Returns
+    -------
+    ldr_gates: list of floats
+       gating based on minima of kernel density estimate of ldr txt
+    """
     if x_ldr is None:
         mx = np.max(ldrtxt.tolist())+0.01
         x_ldr = np.arange(-0.01, mx, 0.0002)
-    f_ldr = findpeaks.get_kde(ldrtxt, x_ldr)  # ldrtxt should be an array
-    peak_amp, peak_loc, peak_width = findpeaks.findpeaks(
-        f_ldr.tolist(), npeaks=1)
+    f_ldr = get_kde(ldrtxt, x_ldr)  # ldrtxt should be an array
+    peak_amp, peak_loc, peak_width = findpeaks(f_ldr.tolist(), npeaks=1)
 
     # Find location of minimun on the right
     f_neg = [-x for x in f_ldr[peak_loc[0]:]]
-    _, trough_loc, _ = findpeaks.findpeaks(f_neg, npeaks=1)
+    _, trough_loc, _ = findpeaks(f_neg, npeaks=1)
     trough_loc = trough_loc[0] + peak_loc[0] - 1
 
     # choose LDR cutoff based on half-proximal width and right trough of peak
@@ -41,6 +48,19 @@ def get_ldrgates(ldrtxt, x_ldr=None):
 
 
 def get_ldrlims(ldrtxt, x_ldr=None):
+    """ limits of ldr txt feature that define x_lims for plots
+    Parameters
+    ----------
+    ldrtxt: 1d array
+        ldr txt feature across all cells in a well
+    x_ldr: 1d array
+        uniformly distributed 1d grid based on expected
+        range of ldr txt
+    Returns
+    -------
+    ldr_lims: list of floats
+        limits of ldr txt feature that define x_lims for plots
+    """
     if x_ldr is None:
         mx = np.max(ldrtxt.tolist())+0.01
         x_ldr = np.arange(-0.01, mx, 0.0002)
@@ -51,10 +71,27 @@ def get_ldrlims(ldrtxt, x_ldr=None):
 
 def plot_ldr_gating(ldrtxt, x_ldr=None, ldr_gates=None,
                     ldr_lims=None, ax=None):
+    """ Summary plot of gating based on gating based on LDR intensities
+    Parameters
+    ----------
+    ldrtxt: 1d array
+       ldr txt feature across all cells in a well
+    x_ldr: 1d array
+       uniformly distributed 1d grid based on expected
+       range of ldr txt
+    ldr_gates: list of floats
+       min and max gating based on ldr txt
+    ldr_lims: list of floats
+       outer bouns of ldr txt to set as x_lim for pltos
+    ax: plot obj
+       provides positional reference for master plot
+    Returns
+    -------
+    """
     if x_ldr is None:
         mx = np.max(ldrtxt.tolist())+0.01
         x_ldr = np.arange(-0.01, mx, 0.0002)
-    f_ldr = findpeaks.get_kde(ldrtxt, x_ldr)
+    f_ldr = get_kde(ldrtxt, x_ldr)
     if not ldr_gates:
         ldr_gates = get_ldrgates(ldrtxt, x_ldr)
     if not ldr_lims:
@@ -77,12 +114,20 @@ def plot_ldr_gating(ldrtxt, x_ldr=None, ldr_gates=None,
     ax.set_ylabel('kernel density estimate')
     return ldr_gates, ldr_lims
 
-# Gating based on DNA content
-# ---------------------------
-# x_dna = np.arange(2.5, 8, 0.02)
-
 
 def compute_log_dna(dna, x_dna=None):
+    """ computes log of DNA content bounded by x_dna[2], x_dna[-3]
+    Parameters
+    ----------
+    dna: 1D array
+        DNA content of cells in a given well
+    x_dna: 1D array
+        Expected distribution of DNA content (used as x-axis grid)
+    Return
+    ------
+    log_dna: 1D array
+        log transformed DNA content
+    """
     if x_dna is None:
         x_dna = np.arange(2.5, 8, 0.02)
     dna_upper_bound = 10 ** x_dna[-3]
@@ -96,13 +141,28 @@ def compute_log_dna(dna, x_dna=None):
 
 
 def get_g1_location(log_dna, x_dna, ldrtxt, ldr_gates):
+    """ computes  ocation of G1 based on DNA content
+    Parameters
+    ----------
+    log_dna: 1d array
+       log DNA content of cells in a given well
+    x_dna: 1d array
+       Expected distribution of DNA content (used as x-axis grid)
+    ldrtxt: 1d array
+        ldr txt feature across all cells in a well
+    ldr_gates: list of floats
+    Returns
+    -------
+    g1_loc: float
+       G1 location on log DNA axis
+    """
     if x_dna is None:
         x_dna = np.arange(2.5, 8, 0.02)
     # Only consider susbet of cells with LDR within ldr_gates
     log_dna_low_ldr = log_dna[(ldr_gates[1] >= ldrtxt) &
                               (ldrtxt >= ldr_gates[0])]
-    f_dna_low_ldr = findpeaks.get_kde(log_dna_low_ldr, x_dna)
-    dna_peaks_amp, dna_peaks_loc,_ = findpeaks.findpeaks(f_dna_low_ldr.tolist())
+    f_dna_low_ldr = get_kde(log_dna_low_ldr, x_dna)
+    dna_peaks_amp, dna_peaks_loc, _ = findpeaks(f_dna_low_ldr.tolist())
     # Remove lesser peaks
     dna_peaks_loc = dna_peaks_loc[dna_peaks_amp > np.max(dna_peaks_amp/10)]
     dna_peaks_amp = dna_peaks_amp[dna_peaks_amp > np.max(dna_peaks_amp/10)]
@@ -120,6 +180,23 @@ def get_g1_location(log_dna, x_dna, ldrtxt, ldr_gates):
 
 
 def get_g2_location(log_dna, x_dna, ldrtxt, ldr_gates, g1_loc):
+    """ computes location of G2 based on DNA content
+    Parameters
+    ----------
+    log_dna: 1d array
+       log DNA content of cells in a given well
+    x_dna: 1d array
+       Expected distribution of DNA content (used as x-axis grid)
+    ldrtxt: 1d array
+        ldr txt feature across all cells in a well
+    ldr_gates: list of floats
+    g1_loc: numpy float
+        G1 location on log DNA scale
+    Returns
+    -------
+    g2_loc: numpy float
+        G2 location on log DNA scale
+    """
     # Get G2 peak and location
     # Only consider subset of cells witt LDR internsity within ldr_gates and
     # DNA content > (g1_loc + 0.4 * log10(2))
@@ -128,9 +205,9 @@ def get_g2_location(log_dna, x_dna, ldrtxt, ldr_gates, g1_loc):
     log_dna_g2_range = log_dna[(log_dna > (g1_loc + 0.4 * np.log10(2))) &
                                (ldr_gates[1] >= ldrtxt) &
                                (ldrtxt >= ldr_gates[0])]
-    f_dna_g2_range = findpeaks.get_kde(log_dna_g2_range, x_dna)
+    f_dna_g2_range = get_kde(log_dna_g2_range, x_dna)
     f_smooth = smooth.smooth(f_dna_g2_range, 5, 'flat')
-    peak_amp, peak_loc, _ = findpeaks.findpeaks(f_smooth.tolist())
+    peak_amp, peak_loc, _ = findpeaks(f_smooth.tolist())
     peak_loc = peak_loc[peak_amp > np.max(peak_amp/10)]
     xdna_loc = x_dna[peak_loc]
     xdna_loc = xdna_loc[xdna_loc > (g1_loc + 0.5 * np.log10(2))]
@@ -146,6 +223,22 @@ def get_g2_location(log_dna, x_dna, ldrtxt, ldr_gates, g1_loc):
 
 
 def get_g1_g2_position(log_dna, x_dna, ldrtxt, ldr_gates):
+    """ wrapper function that returns G1 and G2 location
+    based on log DNA content
+    Parameters
+    ----------
+    log_dna: 1d array
+       log DNA content of cells in a given well
+    x_dna: 1d array
+       Expected distribution of DNA content (used as x-axis grid)
+    ldrtxt: 1d array
+        ldr txt feature across all cells in a well
+    ldr_gates: list of floats
+    Returns
+    -------
+    g1_g2_pos: list of floats
+        G1 and G2 location on log DNA scale
+    """
     if x_dna is None:
         x_dna = np.arange(2.5, 8, 0.02)
     g1_loc = get_g1_location(log_dna, x_dna, ldrtxt, ldr_gates)
@@ -155,6 +248,17 @@ def get_g1_g2_position(log_dna, x_dna, ldrtxt, ldr_gates):
 
 
 def get_dnalims(log_dna, x_dna=None):
+    """ Outer bounds on DNA content to use as x_lim for plots
+    Parameters
+    ----------
+    log_dna: 1d array
+        log DNA content of cells in a given well
+    x_dna: 1d array
+        Expected distribution of DNA content (used as x-axis grid)
+    Returns
+    -------
+    dna_lims: list of floats
+    """
     if x_dna is None:
         x_dna = np.arange(2.5, 8, 0.02)
     dna_lims = (quantile(log_dna, [5e-3, 0.995]) +
@@ -163,20 +267,37 @@ def get_dnalims(log_dna, x_dna=None):
 
 
 def get_dna_gating(dna, ldrtxt, ldr_gates, x_dna=None, ax=None):
+    """ Computes gating to claissfy live/dead cells based on DNA content
+    Parameters
+    ----------
+    dna: 1d array
+         DNA content of cells in a given well
+    ldrtxt: 1d array
+        ldr txt feature across all cells in a well
+    ldr_gates: list of floats
+    x_dna: 1d array
+        Expected distribution of DNA content (used as x-axis grid)
+    ax: subplot object
+        provides positional reference for master plot
+    Returns
+    -------
+    dna_gates: list of floats
+        inner and outer gates to classify live/dead cells
+    """
     if x_dna is None:
         x_dna = np.arange(2.5, 8, 0.02)
     log_dna = compute_log_dna(dna, x_dna)
-    f_dna = findpeaks.get_kde(np.array(log_dna), x_dna)
+    f_dna = get_kde(np.array(log_dna), x_dna)
 
     log_dna_low_ldr = log_dna[(ldr_gates[1] >= ldrtxt) &
                               (ldrtxt >= ldr_gates[0])]
-    f_dna_low_ldr = findpeaks.get_kde(log_dna_low_ldr, x_dna)
+    f_dna_low_ldr = get_kde(log_dna_low_ldr, x_dna)
 
     g1_loc = get_g1_location(log_dna, x_dna, ldrtxt, ldr_gates)
     log_dna_g2_range = log_dna[(log_dna > (g1_loc + 0.4 * np.log10(2))) &
                                (ldr_gates[1] >= ldrtxt) &
                                (ldrtxt >= ldr_gates[0])]
-    f_dna_g2_range = findpeaks.get_kde(log_dna_g2_range, x_dna)
+    f_dna_g2_range = get_kde(log_dna_g2_range, x_dna)
 
     g1_g2_pos = get_g1_g2_position(log_dna, x_dna, ldrtxt, ldr_gates)
     g1_loc = g1_g2_pos[0]
@@ -206,6 +327,23 @@ def get_dna_gating(dna, ldrtxt, ldr_gates, x_dna=None, ax=None):
 
 
 def plot_ldr_dna_scatter(dna, ldrtxt, x_dna=None, x_ldr=None, ax=None):
+    """ Plot of LDR and DNA scatter with associated gates
+    Parameters
+    ----------
+    dna: 1d array
+        DNA content of cells in a given well
+    ldrtxt: 1d array
+        ldr txt feature across all cells in a well
+    x_dna: 1d array
+        Expected distribution of DNA content (used as x-axis grid)
+    x_ldr: 1d array
+        uniformly distributed 1d grid based on expected
+        range of ldr txt
+    ax: subplot object
+        provides positional reference for master plot
+    Returns
+    -------
+    """
     if x_dna is None:
         x_dna = np.arange(2.5, 8, 0.02)
     if x_ldr is None:
@@ -214,9 +352,9 @@ def plot_ldr_dna_scatter(dna, ldrtxt, x_dna=None, x_ldr=None, ax=None):
     log_dna = compute_log_dna(dna, x_dna)
     xy = np.vstack([log_dna, ldrtxt])
     z = gaussian_kde(xy)(xy)
-   
+
     ldr_gates = get_ldrgates(ldrtxt, x_ldr)
-    
+
     g1_g2_pos = get_g1_g2_position(log_dna, x_dna, ldrtxt, ldr_gates)
     g1_loc = g1_g2_pos[0]
     g2_loc = g1_g2_pos[1]
@@ -229,12 +367,12 @@ def plot_ldr_dna_scatter(dna, ldrtxt, x_dna=None, x_ldr=None, ax=None):
     # --------
     if ax is None:
         ax = plt.figure()
-    ax.scatter(log_dna, ldrtxt, c=z, s=10)    
+    ax.scatter(log_dna, ldrtxt, c=z, s=10)
     ax.plot([dna_gates[i] for i in [0, 0, 3, 3, 0]],
-             [ldr_gates[i] for i in [0, 1, 1, 0, 0]], '-r')
+            [ldr_gates[i] for i in [0, 1, 1, 0, 0]], '-r')
     ax.plot([dna_gates[i] for i in [1, 1, 2, 2, 1]],
-             [ldr_gates[i] for i in [0, 1, 1, 0, 0]],
-             '-r', linewidth=2)
+            [ldr_gates[i] for i in [0, 1, 1, 0, 0]],
+            '-r', linewidth=2)
 
     ax.plot(g1_g2_pos, [0, 0], 'xk', )
     ax.plot(g1_g2_pos, [0, 0], 'ok', markersize=14, markerfacecolor='None')
@@ -251,11 +389,38 @@ def plot_ldr_dna_scatter(dna, ldrtxt, x_dna=None, x_ldr=None, ax=None):
 def live_dead(ldrtxt, ldr_gates,
               dna=None, dna_gates=None,
               x_ldr=None, x_dna=None, ax=None):
-    # Notes to self
-    # 1. alive = selected+others, where selected is within
-    #             inner DNA gate and within LDR
-    # 2. dead = anything outside of DNA outer gating and LDR gating
-    # 3. total = alive + dead; selected + others + dead
+    """ assign classification to individual cells as live/dead based on
+    ldrtxt and DNA content.
+    If ax is not None, plots pie chart of fraction live/dead
+    1. alive = selected+others, where selected is within
+                 inner DNA gate and within LDR
+    2. dead = anything outside of DNA outer gating and LDR gating
+    3. total = alive + dead; selected + others + dead
+
+    Parameters
+    ----------
+    ldrtxt: 1d array
+       ldr txt feature across all cells in a well
+    ldr_gates: list of floats
+    dna: 1d array
+       DNA content of cells in a given well
+    dna_gates: list of floats
+    x_ldr: 1d array
+       uniformly distributed 1d grid based on expected
+        range of ldr txt
+    x_dna: 1d array
+       Expected distribution of DNA content (used as x-axis grid)
+    ax: subplot object
+    Returns
+    -------
+    alive: int
+       number of cells classied as alive
+    dead: int
+       numer of cells classified as dead
+    outcome: 1d array
+       classification of each cell as live(>=0) or dead (-1).
+       should have same length as ldrtxt
+    """
     if x_dna is None:
         x_dna = np.arange(2.5, 8, 0.02)
     if x_ldr is None:
@@ -296,6 +461,18 @@ def live_dead(ldrtxt, ldr_gates,
 
 
 def plot_summary(ldr, dna, well=None):
+    """ master summary plot which incorporates above plots as subplots
+    Parameters
+    ----------
+    ldr: 1d array
+       ldr txt feature across all cells in a well
+    dna: 1d array
+       DNA content of cells in a given well
+    well: str
+    Returns
+    -------
+    fig: matplotlib figure object
+    """
     fig = plt.figure()
     gridspec.GridSpec(2, 2)
     ax1 = plt.subplot2grid((2, 2), (0, 0), colspan=1, rowspan=1)
