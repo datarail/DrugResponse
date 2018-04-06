@@ -55,6 +55,7 @@ def run(object_level_directory):
             fractions = pf.evaluate_Mphase(log_ph3, ph3_cutoff, cell_identity)
 
             fractions['well'] = well
+            fractions['total'] = len(dna)
             fractions['alive'] = a
             fractions['dead'] = d
             df_summary = df_summary.append(fractions, ignore_index=True)
@@ -71,7 +72,7 @@ def run(object_level_directory):
             plt.tight_layout()
             pdf_pages.savefig(fig)
     pdf_pages.close()
-    df_summary = df_summary[['well', 'alive', 'dead',
+    df_summary = df_summary[['well', 'total', 'alive', 'dead',
                              'G1', 'S', 'G2', 'M',
                              'S_dropout', 'other']]
     df_summary.to_csv('summary_%s.csv' % object_level_directory, index=False)
