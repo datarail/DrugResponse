@@ -8,10 +8,22 @@ from cell_cycle_gating import dead_cell_filter as dcf
 from cell_cycle_gating import cellcycle_phases as cc
 from cell_cycle_gating import ph3_filter as pf
 
-# object_level_directory = '180202_11II_062[20634]'
-
 
 def run(object_level_directory):
+    """ Executes cell cycle gating on all wells for which object level
+    data is available in object_level_directory. Plots and saves summary pdf
+    of DNA v EdU distribution with automated gatings. A dataframe summarizing
+    results for each well is also saved
+    Parameters
+    ----------
+    object_level_directory: str
+        name of folder containing object level data for a single plate
+    Returns
+    -------
+    df: pandas dataframe
+       well level summary of number of live/dead cells and fraction of
+       cells in each phase of the cell cycle
+    """
     plt.ioff()
     object_level_files = [s for s in os.listdir(object_level_directory)
                           if 'Nuclei Selected[0].txt' in s]
