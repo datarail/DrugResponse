@@ -4,6 +4,20 @@ import matplotlib.pyplot as plt
 
 
 def get_brdugates(brdu, x_brdu=None, plotting=False):
+    """ Gating on minima of kernel density estimate of BrdU distribution
+    Parameters
+    ----------
+    brdu: 1d array
+        brdu intensities across all cells in a well
+    x_brdu: 1d array
+        1d grid of uniform size based on expected range of BrdU
+    plotting: boolean
+        if True, functions returns summary plot of gating
+    Returns
+    -------
+    brdu_cutoff: numpy float
+       BrdU value corresponding to gate on minima of kde
+    """
     if x_brdu is None:
         mx = np.max(brdu.tolist())+0.01
         x_brdu = np.arange(-0.01, mx, 1)
