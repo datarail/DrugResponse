@@ -8,4 +8,4 @@ from cell_cycle_gating import run_cell_cycle_gating as rccg
 obj = 'path_to_object_level_data_folder'
 df = rccg.run(obj)
 ```    
-![Alt text](example_plots/dna_edu_gating_example.png?raw=true "Title")
+![Alt text](example_plots/example_plot.jpg?raw=true "Title")
