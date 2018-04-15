@@ -5,6 +5,12 @@
 ```
 $ pip install peakutils
 ```
+## Installation
+* The cell cycle gating repository can be installed from command line as shown belo
+```
+$ git clone https://github.com/datarail/DrugResponse.git
+```
+* add `datarail/DrugResponse/python/cell_cycle_gating` to your `PYTHONPATH` to enable importing the modules under `cell_cycle_gating` from any location on your machine
 
 ## Getting started
 * cd into the directory that contains the object level data folders. 
