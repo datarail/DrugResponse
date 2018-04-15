@@ -1,5 +1,9 @@
 # Deep Dye Drop based cell cycle gating
 
+## Requirements
+* peakutils (available on [PyPI](https://pypi.python.org/pypi/PeakUtils)). It can be installed from command line as shown below
+`$ pip install peakutils`
+
 ## Getting started
 * cd into the directory that contains the object level data folders. 
 * Start a Jupyter notebook or Ipython session.
