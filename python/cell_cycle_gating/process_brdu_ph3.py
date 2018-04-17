@@ -17,7 +17,7 @@ plt.ioff()
 # dfm = pd.read_csv('metadata.csv')
 
 
-def get_gates_per_well(dfm, object_level_files):
+def get_gates_per_well(dfm, object_level_directory, object_level_files):
     df_summary = pd.DataFrame()
     agent_cols = [a for a in dfm.columns.tolist() if 'agent' in a]
     if len(agent_cols) > 1:
@@ -64,14 +64,14 @@ def get_gates_per_well(dfm, object_level_files):
     return dfc
 
 
-def plot_scatter(dfc, object_level_files, filename='scatter.pdf'):
+def plot_scatter(dfc, dfm, object_level_directory,
+                 object_level_files, filename='scatter.pdf'):
     # PDF setup
     pdf_pages = PdfPages(filename)
     nb_plots=len(object_level_files)
     nb_plots_per_page = 15
     nb_pages = int(np.ceil(nb_plots / float(nb_plots_per_page)))
 
-    
     brdu_cutoff_mean = dfc.groupby(['agent', 'concentration'])[
         'brdu_cutoff'].mean().loc['DMSO'].values[0]
     ph3_cutoff_mean = dfc.groupby(['agent', 'concentration'])[
@@ -134,16 +134,18 @@ def plot_scatter(dfc, object_level_files, filename='scatter.pdf'):
         if (i + 1) % nb_plots_per_page == 0 or (i + 1) == nb_plots:
             plt.tight_layout()
             pdf_pages.savefig(fig)
-            
+
     dfc.index = dfc['well']
     df_summary.index = df_summary['well']
     dfc = pd.concat([dfc, df_summary], axis=1)
     pdf_pages.close()
     return dfc
 
+
 def plot_summary(dfm, object_level_folder, filename='scatter.pdf'):
     object_level_files = [s for s in os.listdir(object_level_folder)
-                       if 'Nuclei Selected[0].txt' in s]
-    dfc = get_gates_per_well(dfm, object_level_files)
-    dfs = plot_scatter(dfc, object_level_files, filename)
+                          if 'Nuclei Selected[0].txt' in s]
+    dfc = get_gates_per_well(dfm, object_level_folder, object_level_files)
+    dfs = plot_scatter(dfc, dfm, object_level_folder,
+                       object_level_files, filename)
     return dfs
