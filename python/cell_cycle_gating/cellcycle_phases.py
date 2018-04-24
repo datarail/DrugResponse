@@ -980,7 +980,7 @@ def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna, dna_peaks,
 
 
 def plot_summary(dna, edu, fig, x_dna=None, px_edu=None,
-                 well=None, plot='all', plot_num=None):
+                 title=None, plot='all', plot_num=None):
     """ summary plots depicting kernel density estimates for EdU and DNA,
     phase candidates and cell cycle fractions
     Parameters
@@ -994,9 +994,9 @@ def plot_summary(dna, edu, fig, x_dna=None, px_edu=None,
        uniformly spaced grid based on expected DNA content
     px_edu: 1d array
        uniformly spaced grid based on expected EdU intensities
-    well: string
-       well name of 96/384 well plate
-    plot: string
+    title: str
+      plot title
+    plot: str
        'all' if all summary plots are to be plotted,
        'scatter' to generate only scatrer plot
     plot_num: int
@@ -1097,10 +1097,10 @@ def plot_summary(dna, edu, fig, x_dna=None, px_edu=None,
                                                           log_edu, edu_gates,
                                                           px_edu, edu_peaks,
                                                           nsmooth=5, ax=ax5)
-    ax4.set_title(well)
+    ax4.set_title(title, fontsize=6)
     if plot == 'all':
         fig.tight_layout()
         fig.set_size_inches(w=10, h=6)
-        if well:
-            fig.savefig('cell_cycle_phases_%s.png' % well, dpi=300)
+        if title:
+            fig.savefig('cell_cycle_phases_%s.png' % title, dpi=300)
     return fractions, cell_id
