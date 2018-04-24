@@ -31,7 +31,11 @@ def get_ldrgates(ldrtxt, x_ldr=None):
     # Find location of minimun on the right
     f_neg = [-x for x in f_ldr[peak_loc[0]:]]
     _, trough_loc, _ = findpeaks(f_neg, npeaks=1)
-    trough_loc = trough_loc[0] + peak_loc[0] - 1
+    # If peakfinder cannot find peak minima, use ldrwidth_5x as default
+    if np.any(trough_loc):
+        trough_loc = trough_loc[0] + peak_loc[0] - 1
+    else:
+        trough_loc = peak_loc + (5 * peak_width[0])
 
     # choose LDR cutoff based on half-proximal width and right trough of peak
     ldrwidth_5x = peak_loc + (5 * peak_width[0])
