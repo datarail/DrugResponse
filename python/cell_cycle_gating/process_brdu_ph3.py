@@ -1,51 +1,50 @@
 import pandas as pd
 import os
 import re
-from cell_cycle_gating import dead_cell_filter as dcf
-from cell_cycle_gating import cellcycle_phases as cc
 from cell_cycle_gating import ph3_filter as pf
 from cell_cycle_gating import brdu_gating as bg
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 
-plt.ioff()
-
-# object_level_directory = '2017-06-20T153742-0400[23249]'
-
-
-# dfm = pd.read_csv('metadata.csv')
-
 
 def get_gates_per_well(dfm, object_level_directory, object_level_files):
+    """Runs BrdU and pH3 gating function scripts on a per well basis
+
+    Parameters
+    ----------
+    dfm : pandas dataframe
+        table containing well level metadata mapping wells to cell_line,
+        agents, and concentration.
+    object_level_directory : str
+        path to folder containing object level .txt files
+    object_level_files : list of str
+        list of object level .txt files.
+
+    Returns
+    -------
+    dfc : pandas dataframe
+        metadata file appended with pH3 and BrdU gates.
+    """
     df_summary = pd.DataFrame()
     agent_cols = [a for a in dfm.columns.tolist() if 'agent' in a]
     if len(agent_cols) > 1:
         dfm[agent_cols] = dfm[agent_cols].replace(['', ' '], np.nan)
-        dfm['agent'] = dfm[agent_cols].apply(lambda x: ','.join(x[x.notnull()]), axis=1)
+        dfm['agent'] = dfm[agent_cols].apply(
+            lambda x: ','.join(x[x.notnull()]), axis=1)
         conc_cols = [a for a in dfm.columns.tolist() if 'concentration' in a]
         dfm[conc_cols] = dfm[conc_cols].astype(str)
         dfm[conc_cols] = dfm[conc_cols].replace(['0.0', '0'], np.nan)
-        dfm['concentration'] = dfm[conc_cols].apply(lambda x: ','.join(x[x.notnull()]), axis=1)
+        dfm['concentration'] = dfm[conc_cols].apply(
+            lambda x: ','.join(x[x.notnull()]), axis=1)
     for file in object_level_files:
         gates = {}
         df = pd.read_table('%s/%s' % (object_level_directory, file))
         well = re.search('result.(.*?)\[', file).group(1)
         well = "%s%s" % (well[0], well[1:].zfill(2))
         gates['well'] = well
-        
-        agent = dfm[dfm.well == well].agent.values[0]
-        concentration = dfm[dfm.well == well].concentration.values[0]
-        if (concentration == '0') | (concentration == '0.0'):
-            conc = ''
-        else:
-            conc = "(%s um)" % concentration
-            conc.replace('0.3333333333333', '0.33')
-        title = "%s %s" % (agent, conc)
-
 
         brdu = np.array(df['Nuclei Selected - Nucleus A647 Mean'].tolist())
-        dna = np.array(df['Nuclei Selected - DNA Content'].tolist())
         ph3 = np.array(df['Nuclei Selected - Nucleus A488 Mean'].tolist())
 
         try:
@@ -54,7 +53,7 @@ def get_gates_per_well(dfm, object_level_directory, object_level_files):
             ph3_cutoff = 10 ** ph3_cutoff
             gates['ph3_cutoff'] = ph3_cutoff
             gates['brdu_cutoff'] = brdu_cutoff
-            df_summary = df_summary.append(gates, ignore_index = True)
+            df_summary = df_summary.append(gates, ignore_index=True)
         except IndexError:
             print(well)
             pass
@@ -66,11 +65,35 @@ def get_gates_per_well(dfm, object_level_directory, object_level_files):
 
 def plot_scatter(dfc, dfm, object_level_directory,
                  object_level_files, filename='scatter.pdf'):
+    """Plots BrdU and pH3 scatter and applies gating based on
+        average gating of control wells
+
+    Parameters
+    ----------
+    dfc : pandas dataframe
+        table containing well level metadata and BrdU and pH3 gates per well.
+    dfm : pandas dataframe
+        table containing well level metadata mapping wells to cell_line,
+        agents, and concentration.
+    object_level_directory : str
+        path to folder containing object level .txt files
+    object_level_files : list of str
+        list of object level .txt files.
+    filename : Optional[str]
+        Name of .pdf file in which the scatter plots for each well is saved.
+        Default is 'scatter.pdf'.
+
+    Returns
+    -------
+    dfc : pandas dataframe
+        metadata file appended with pH3 and BrdU gates.
+    """
     # PDF setup
     pdf_pages = PdfPages(filename)
-    nb_plots=len(object_level_files)
+    nb_plots = len(object_level_files)
     nb_plots_per_page = 15
-    nb_pages = int(np.ceil(nb_plots / float(nb_plots_per_page)))
+    # nb_pages = int(np.ceil(nb_plots / float(nb_plots_per_page)))
+    plt.ioff()
 
     brdu_cutoff_mean = dfc.groupby(['agent', 'concentration'])[
         'brdu_cutoff'].mean().loc['DMSO'].values[0]
@@ -95,11 +118,11 @@ def plot_scatter(dfc, dfm, object_level_directory,
         fractions['well'] = well
 
         brdu = np.array(df['Nuclei Selected - Nucleus A647 Mean'].tolist())
-        dna = np.array(df['Nuclei Selected - DNA Content'].tolist())
+        # dna = np.array(df['Nuclei Selected - DNA Content'].tolist())
         ph3 = np.array(df['Nuclei Selected - Nucleus A488 Mean'].tolist())
 
         high_brdu = brdu[brdu > brdu_cutoff_mean]
-        high_ph3 = ph3[ph3 > ph3_cutoff_mean]                         
+        high_ph3 = ph3[ph3 > ph3_cutoff_mean]
         brduf = brdu[(brdu > brdu_cutoff_mean) & (ph3 > ph3_cutoff_mean)]
         ph3f = ph3[(brdu > brdu_cutoff_mean) & (ph3 > ph3_cutoff_mean)]
         fractions['total_cells'] = len(brdu)
@@ -119,9 +142,9 @@ def plot_scatter(dfc, dfm, object_level_directory,
         ax.set_title(title, fontsize=6)
         ax.set_xlabel('BrdU')
         ax.set_ylabel('pH3')
-        #ylim = ax.get_ylim()
-        #xlim = ax.get_xlim()
-        ax.text(1.5e3 , ph3_cutoff_mean+500, '%.2f%%' % fraction_s_phase,
+        # ylim = ax.get_ylim()
+        # xlim = ax.get_xlim()
+        ax.text(1.5e3, ph3_cutoff_mean+500, '%.2f%%' % fraction_s_phase,
                 fontsize=10, color='black')
         ax.set_ylim(1e2, 2.5e4)
         ax.set_xlim(50, 5e3)
@@ -143,9 +166,68 @@ def plot_scatter(dfc, dfm, object_level_directory,
 
 
 def plot_summary(dfm, object_level_folder, filename='scatter.pdf'):
-    object_level_files = [s for s in os.listdir(object_level_folder)
-                          if 'Nuclei Selected[0].txt' in s]
+    """Makes summary scatter plot of BrdU pH3 and returns summary
+    data file of fraction of cells in each phase based on gating
+
+    Parameters
+    ----------
+    dfm : pandas dataframe
+        table containing well level metadata. Minimun columns required is
+        well, cell_line, agent, and concentration.
+    object_level_folder : str
+        path to folder containing object level text files.
+    filename : Optional[str]
+         Name of .pdf file containing the summary plots per well.
+         Default is scatter.pdf
+    Returns
+    -------
+    dfs : pandas dataframe
+        Summary of BrDu and pH3 based gating per well, and fraction of cells
+        in each state.
+    """
+    dfm_ord = merge_metadata(dfm, object_level_folder)
+    object_level_files = dfm_ord['object_level_file'].tolist()
+    # object_level_files = [s for s in os.listdir(object_level_folder)
+    #                       if 'Nuclei Selected[0].txt' in s]
+
     dfc = get_gates_per_well(dfm, object_level_folder, object_level_files)
     dfs = plot_scatter(dfc, dfm, object_level_folder,
                        object_level_files, filename)
     return dfs
+
+
+def merge_metadata(dfm, obj):
+    """Merges metadata with object level file and
+    sorts files by cell line, drug and concetration.
+
+    Parameters
+    ----------
+    dfm : pandas dataframe
+        metadata file with wells mapped to treatment conditions
+    obj : str
+        path to folder containing object level data
+
+    Returns
+    -------
+    dfmc : pandas dataframe
+        mapping between wells, treatment, and filename
+        containing object level data.
+        Sorted by cell line, drug and concentration
+    """
+    barcode = obj.split('[')[0]
+    dfm = dfm[dfm.barcode == barcode].copy()
+    dfm.index = dfm.well.tolist()
+    wells = []
+    object_level_files = [s for s in os.listdir(obj)
+                          if 'Nuclei Selected[0].txt' in s]
+    for file in object_level_files:
+        well = re.search('result.(.*?)\[', file).group(1)
+        well = "%s%s" % (well[0], well[1:].zfill(2))
+        wells.append(well)
+    dfmap = pd.DataFrame(list(zip(wells, object_level_files)),
+                         columns=['well', 'object_level_file'])
+    dfmap.index = dfmap.well.tolist()
+    dfmc = pd.concat([dfm, dfmap], axis=1)
+    dfmc = dfmc.dropna(subset=['object_level_file'])
+    dfmc = dfmc.sort_values(['cell_line', 'agent', 'concentration'])
+    return dfmc
