@@ -26,7 +26,8 @@ def get_gates_per_well(dfm, object_level_directory, object_level_files):
     dfc : pandas dataframe
         metadata file appended with pH3 and BrdU gates.
     """
-    df_summary = pd.DataFrame()
+    # Merge agent and concentration columns in the case of
+    # combination experiments.
     agent_cols = [a for a in dfm.columns.tolist() if 'agent' in a]
     if len(agent_cols) > 1:
         dfm[agent_cols] = dfm[agent_cols].replace(['', ' '], np.nan)
@@ -37,6 +38,8 @@ def get_gates_per_well(dfm, object_level_directory, object_level_files):
         dfm[conc_cols] = dfm[conc_cols].replace(['0.0', '0'], np.nan)
         dfm['concentration'] = dfm[conc_cols].apply(
             lambda x: ','.join(x[x.notnull()]), axis=1)
+
+    df_summary = pd.DataFrame()
     for file in object_level_files:
         gates = {}
         df = pd.read_table('%s/%s' % (object_level_directory, file))
@@ -214,6 +217,19 @@ def merge_metadata(dfm, obj):
         containing object level data.
         Sorted by cell line, drug and concentration
     """
+    # Merge agent and concentration columns in the case of
+    # combination experiments.
+    agent_cols = [a for a in dfm.columns.tolist() if 'agent' in a]
+    if len(agent_cols) > 1:
+        dfm[agent_cols] = dfm[agent_cols].replace(['', ' '], np.nan)
+        dfm['agent'] = dfm[agent_cols].apply(
+            lambda x: ','.join(x[x.notnull()]), axis=1)
+        conc_cols = [a for a in dfm.columns.tolist() if 'concentration' in a]
+        dfm[conc_cols] = dfm[conc_cols].astype(str)
+        dfm[conc_cols] = dfm[conc_cols].replace(['0.0', '0'], np.nan)
+        dfm['concentration'] = dfm[conc_cols].apply(
+            lambda x: ','.join(x[x.notnull()]), axis=1)
+
     barcode = obj.split('[')[0]
     dfm = dfm[dfm.barcode == barcode].copy()
     dfm.index = dfm.well.tolist()
