@@ -28,16 +28,7 @@ def get_gates_per_well(dfm, object_level_directory, object_level_files):
     """
     # Merge agent and concentration columns in the case of
     # combination experiments.
-    agent_cols = [a for a in dfm.columns.tolist() if 'agent' in a]
-    if len(agent_cols) > 1:
-        dfm[agent_cols] = dfm[agent_cols].replace(['', ' '], np.nan)
-        dfm['agent'] = dfm[agent_cols].apply(
-            lambda x: ','.join(x[x.notnull()]), axis=1)
-        conc_cols = [a for a in dfm.columns.tolist() if 'concentration' in a]
-        dfm[conc_cols] = dfm[conc_cols].astype(str)
-        dfm[conc_cols] = dfm[conc_cols].replace(['0.0', '0'], np.nan)
-        dfm['concentration'] = dfm[conc_cols].apply(
-            lambda x: ','.join(x[x.notnull()]), axis=1)
+    dfm = process_metadata_file(dfm)
 
     df_summary = pd.DataFrame()
     for file in object_level_files:
@@ -91,6 +82,10 @@ def plot_scatter(dfc, dfm, object_level_directory,
     dfc : pandas dataframe
         metadata file appended with pH3 and BrdU gates.
     """
+    # Merge agent and concentration columns in the case of
+    # combination experiments.
+    dfm = process_metadata_file(dfm)
+
     # PDF setup
     pdf_pages = PdfPages(filename)
     nb_plots = len(object_level_files)
@@ -219,16 +214,7 @@ def merge_metadata(dfm, obj):
     """
     # Merge agent and concentration columns in the case of
     # combination experiments.
-    agent_cols = [a for a in dfm.columns.tolist() if 'agent' in a]
-    if len(agent_cols) > 1:
-        dfm[agent_cols] = dfm[agent_cols].replace(['', ' '], np.nan)
-        dfm['agent'] = dfm[agent_cols].apply(
-            lambda x: ','.join(x[x.notnull()]), axis=1)
-        conc_cols = [a for a in dfm.columns.tolist() if 'concentration' in a]
-        dfm[conc_cols] = dfm[conc_cols].astype(str)
-        dfm[conc_cols] = dfm[conc_cols].replace(['0.0', '0'], np.nan)
-        dfm['concentration'] = dfm[conc_cols].apply(
-            lambda x: ','.join(x[x.notnull()]), axis=1)
+    dfm = process_metadata_file(dfm)
 
     barcode = obj.split('[')[0]
     dfm = dfm[dfm.barcode == barcode].copy()
@@ -247,3 +233,31 @@ def merge_metadata(dfm, obj):
     dfmc = dfmc.dropna(subset=['object_level_file'])
     dfmc = dfmc.sort_values(['cell_line', 'agent', 'concentration'])
     return dfmc
+
+
+def process_metadata_file(dfmeta):
+    """Merge agent and concentration columns in the case of
+       combination experiments.
+
+    Parameters
+    ----------
+    dfmeta : pandas dataframe
+       metadata file with wells mapped to treatment condition.
+    Returns
+    -------
+    dfm : pandas dataframe
+       metadata file with agent and concentration columns merged in the case of
+    combination experiments.
+    """
+    dfm = dfmeta.copy()
+    agent_cols = [a for a in dfm.columns.tolist() if 'agent' in a]
+    if len(agent_cols) > 1:
+        dfm[agent_cols] = dfm[agent_cols].replace(['', ' '], np.nan)
+        dfm['agent'] = dfm[agent_cols].apply(
+            lambda x: ','.join(x[x.notnull()]), axis=1)
+        conc_cols = [a for a in dfm.columns.tolist() if 'concentration' in a]
+        dfm[conc_cols] = dfm[conc_cols].astype(str)
+        dfm[conc_cols] = dfm[conc_cols].replace(['0.0', '0'], np.nan)
+        dfm['concentration'] = dfm[conc_cols].apply(
+            lambda x: ','.join(x[x.notnull()]), axis=1)
+    return dfm
