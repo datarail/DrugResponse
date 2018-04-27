@@ -10,6 +10,7 @@ from scipy.ndimage.filters import maximum_filter
 from scipy.spatial.distance import pdist, squareform
 from scipy.stats import norm
 import matplotlib.gridspec as gridspec
+from scipy.ndimage.morphology import generate_binary_structure
 
 
 def get_edu_gates(edu, px_edu=None, plot=False, ax=None):
@@ -101,7 +102,7 @@ def get_edu_gates(edu, px_edu=None, plot=False, ax=None):
     # --------
     if plot:
         if ax is None:
-            ax = plt.figure()
+           fig, ax = plt.subplots()
         idx = np.random.permutation(len(edu))
         idx = idx[:np.min((len(edu), 1000))]
         edu = np.array(edu)
@@ -277,7 +278,7 @@ def smooth_1d(y, lm=5):
     return z[0]
 
 
-def imregionalmax(f):
+def imregionalmax(f, size=16):
     """ Reproduced MATLAB's immregional function
     Parameters
     ----------
@@ -286,8 +287,8 @@ def imregionalmax(f):
     -------
     peak_2d: ndarray
     """
-    conn_8 = np.ones((8, 8))
-    regional_max = maximum_filter(f, footprint=conn_8)
+    neighborhood = generate_binary_structure(2, 2)
+    regional_max = maximum_filter(f, footprint=neighborhood)
     peak_2d = (f == regional_max)
     return peak_2d
 
