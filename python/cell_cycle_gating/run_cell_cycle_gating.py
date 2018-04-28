@@ -111,9 +111,10 @@ def run(object_level_directory, dfm=None):
     if dfm is not None:
         df_summary.index = df_summary.well.tolist()
         df_summary = pd.concat([dfm_ord, df_summary], axis=1)
-    # Merge summary table corpse count if available
+    # Merge summary table with corpse count if available
     dfc = get_corpse_count(object_level_directory)
     if dfc is not None:
+        df_summary.index = df_summary.well.tolist()
         df_summary = pd.concat([df_summary, dfc], axis=1)
     df_summary.to_csv('summary_%s.csv' % object_level_directory, index=False)
     return df_summary
