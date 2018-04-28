@@ -107,9 +107,14 @@ def run(object_level_directory, dfm=None):
     df_summary = df_summary[['well', 'total', 'alive', 'dead',
                              'G1', 'S', 'G2', 'M',
                              'S_dropout', 'other']]
+    # Merge summary table with metadata if provided
     if dfm is not None:
         df_summary.index = df_summary.well.tolist()
         df_summary = pd.concat([dfm_ord, df_summary], axis=1)
+    # Merge summary table corpse count if available
+    dfc = get_corpse_count(object_level_directory)
+    if dfc is not None:
+        df_summary = pd.concat([df_summary, dfc], axis=1)
     df_summary.to_csv('summary_%s.csv' % object_level_directory, index=False)
     return df_summary
 
@@ -181,3 +186,33 @@ def process_metadata_file(dfmeta):
         dfm['concentration'] = dfm[conc_cols].apply(
             lambda x: ','.join(x[x.notnull()]), axis=1)
     return dfm
+
+
+def get_corpse_count(obj):
+    """Return corpse count dataframe
+
+    Parameters
+    ----------
+    obj : str
+        path to folder containing object level data
+
+    Returns
+    -------
+    dfc : pandas dataframe
+        datatable mapping well to corpse counts
+    """
+    corpse_file = [f for f in os.listdir(obj)
+                   if 'CorpseCountOnly' in f and '.txt' in f]
+    if corpse_file:
+        df_corpse = pd.read_table("%s/%s" %
+                                  (obj, corpse_file[0]))
+        wells = ["%s%s" % (w[0], w[1:].zfill(2))
+                 for w in df_corpse.WellName.tolist()]
+        df_corpse.index = wells
+        nd = {'Corpses - Number of Objects': 'corpse_count'}
+        df_corpse = df_corpse.rename(columns=nd)
+        df_corpse = df_corpse['corpse_count'].copy()
+        dfc = pd.DataFrame(df_corpse)
+        return dfc
+    else:
+        return None
