@@ -43,7 +43,7 @@ def run(object_level_directory, dfm=None):
     # nb_pages = int(np.ceil(nb_plots / float(nb_plots_per_page)))
     for i, file in enumerate(object_level_files):
         if i % nb_plots_per_page == 0:
-            fig = plt.figure(figsize=(8.27, 11.69), dpi=100)
+            fig = plt.figure(figsize=(8.27, 11.69), dpi=50)
         df = pd.read_table('%s/%s' % (object_level_directory, file))
         well = re.search('result.(.*?)\[', file).group(1)
         well = "%s%s" % (well[0], well[1:].zfill(2))
@@ -84,9 +84,9 @@ def run(object_level_directory, dfm=None):
             fractions = pf.evaluate_Mphase(log_ph3, ph3_cutoff, cell_identity)
 
             fractions['well'] = well
-            fractions['total'] = len(dna)
-            fractions['alive'] = a
-            fractions['dead'] = d
+            fractions['cell_count__total'] = len(dna)
+            fractions['cell_count'] = a
+            fractions['cell_count__dead'] = d
             df_summary = df_summary.append(fractions, ignore_index=True)
         except ValueError:
             print(well, ' ValueError')
@@ -109,12 +109,13 @@ def run(object_level_directory, dfm=None):
                              'S_dropout', 'other']]
     # Merge summary table with metadata if provided
     if dfm is not None:
-        df_summary.index = df_summary.well.tolist()
+        df_summary.index = df_summary['well'].tolist()
         df_summary = pd.concat([dfm_ord, df_summary], axis=1)
+        df_summary = df_summary.loc[:, ~df_summary.columns.duplicated()]
     # Merge summary table with corpse count if available
     dfc = get_corpse_count(object_level_directory)
     if dfc is not None:
-        df_summary.index = df_summary.well.tolist()
+        df_summary.index = df_summary['well'].tolist()
         df_summary = pd.concat([df_summary, dfc], axis=1)
     df_summary.to_csv('summary_%s.csv' % object_level_directory, index=False)
     return df_summary
