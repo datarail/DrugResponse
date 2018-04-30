@@ -43,7 +43,7 @@ def run(object_level_directory, dfm=None):
     # nb_pages = int(np.ceil(nb_plots / float(nb_plots_per_page)))
     for i, file in enumerate(object_level_files):
         if i % nb_plots_per_page == 0:
-            fig = plt.figure(figsize=(8.27, 11.69), dpi=50)
+            fig = plt.figure(figsize=(8.27, 11.69), dpi=10)
         df = pd.read_table('%s/%s' % (object_level_directory, file))
         well = re.search('result.(.*?)\[', file).group(1)
         well = "%s%s" % (well[0], well[1:].zfill(2))
@@ -104,7 +104,8 @@ def run(object_level_directory, dfm=None):
                   (i+1, len(object_level_files)))
             plt.close('all')
     pdf_pages.close()
-    df_summary = df_summary[['well', 'total', 'alive', 'dead',
+    df_summary = df_summary[['well', 'cell_count__total',
+                             'cell_count', 'cell_count__dead',
                              'G1', 'S', 'G2', 'M',
                              'S_dropout', 'other']]
     # Merge summary table with metadata if provided
