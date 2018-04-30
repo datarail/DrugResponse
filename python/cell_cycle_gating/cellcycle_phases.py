@@ -13,7 +13,7 @@ import matplotlib.gridspec as gridspec
 from scipy.ndimage.morphology import generate_binary_structure
 
 
-def get_edu_gates(edu, px_edu=None, plot=False, ax=None):
+def get_edu_gates(edu, px_edu=None, ax=None):
     """ Returns estimate of max EdU for G1 gating and min EdU for S phase gating
     Parameters
     ----------
@@ -100,9 +100,7 @@ def get_edu_gates(edu, px_edu=None, plot=False, ax=None):
 
     # Plotting
     # --------
-    if plot:
-        if ax is None:
-           fig, ax = plt.subplots()
+    if ax is not None:
         idx = np.random.permutation(len(edu))
         idx = idx[:np.min((len(edu), 1000))]
         edu = np.array(edu)
@@ -193,9 +191,9 @@ def plot_edu_dna_scatter(dna, edu, offset_edu,
     dna_lims: list of float
         x-axis limits of plot obtained from `get_dna_gates` function
     edu_gates: list of float
-        gates obtained from `get_edu_gates` function 
+        gates obtained from `get_edu_gates` function
     edu_lims: list of float
-        y-axis limits of plot obtained from `get_edu_gates` function 
+        y-axis limits of plot obtained from `get_edu_gates` function
     x_dna: 1D array
         x-axis grid for DNA based on expected range of DNA content
     px_edu: 1D array
@@ -215,7 +213,7 @@ def plot_edu_dna_scatter(dna, edu, offset_edu,
     xy = np.vstack([log_dna, log_edu])
     z = gaussian_kde(xy)(xy)
     if ax is not None:
-        ax.scatter(log_dna, log_edu, c=z, s=10)
+        ax.scatter(log_dna, log_edu, c=z, s=2)
         ax.plot([dna_gates[i] for i in [0, 0, 3, 3, 0, 0, 1, 1, 0, 2, 2, 3]],
                 [-1, edu_gates[1], edu_gates[1], -1,
                  np.nan, edu_gates[0], edu_gates[0],
@@ -278,7 +276,7 @@ def smooth_1d(y, lm=5):
     return z[0]
 
 
-def imregionalmax(f, size=16):
+def imregionalmax(f):
     """ Reproduced MATLAB's immregional function
     Parameters
     ----------
@@ -287,6 +285,7 @@ def imregionalmax(f, size=16):
     -------
     peak_2d: ndarray
     """
+    # define an 8-connected neighborhood
     neighborhood = generate_binary_structure(2, 2)
     regional_max = maximum_filter(f, footprint=neighborhood)
     peak_2d = (f == regional_max)
@@ -427,23 +426,28 @@ def get_phase_candidates(peak_candidates, edu_shift, edu_s_min):
         ), [0, 1]
         ]
         phase_candidates[1, :] = s_phase_candidates
-        g1_candidates = peak_candidates[((peak_candidates[:, 0] < s_phase_candidates[0] + np.log10(2) * 0.05) &
-                                        (peak_candidates[:, 0] > s_phase_candidates[0] - 0.75*np.log10(2)) &
-                                         (peak_candidates[:, 1] < s_phase_candidates[1] - edu_shift)), :]
+        g1_candidates = peak_candidates[(
+            (peak_candidates[:, 0] < s_phase_candidates[0] + np.log10(2) * 0.05) &
+            (peak_candidates[:, 0] > s_phase_candidates[0] - 0.75 * np.log10(2)) &
+            (peak_candidates[:, 1] < s_phase_candidates[1] - edu_shift)), :]
         if np.any(g1_candidates):
-            phase_candidates[0, :] = g1_candidates[np.argmax(g1_candidates[:, 2]), [0, 1]]
+            phase_candidates[0, :] = g1_candidates[
+                np.argmax(g1_candidates[:, 2]), [0, 1]]
 
-        g2_candidates = peak_candidates[((peak_candidates[:, 0] > np.nanmean(phase_candidates[:2, 0])) &
-                                         (peak_candidates[:, 0] < np.nanmean(phase_candidates[:2, 0]) + np.log10(2)) &
-                                         (peak_candidates[:, 1] < phase_candidates[1, 1] - edu_shift)), :]
+        g2_candidates = peak_candidates[(
+            (peak_candidates[:, 0] > np.nanmean(phase_candidates[:2, 0])) &
+            (peak_candidates[:, 0] < np.nanmean(phase_candidates[:2, 0]) + np.log10(2)) &
+            (peak_candidates[:, 1] < phase_candidates[1, 1] - edu_shift)), :]
         if np.any(g2_candidates):
-            phase_candidates[2, :] = g2_candidates[np.argmax(g2_candidates[:, 2]), [0, 1]]
+            phase_candidates[2, :] = g2_candidates[
+                np.argmax(g2_candidates[:, 2]), [0, 1]]
     else:
-        # Most likely no S-phase_candidates, therefore assign 2 highest peaks as G1 ans G2 based on DNA
+        # Most likely no S-phase_candidates,
+        # therefore assign 2 highest peaks as G1 ans G2 based on DNA
         if np.any(peak_candidates):
-            if peak_candidates.shape[0] == 1:  # If only 1 peak, just assign to G1
+            if peak_candidates.shape[0] == 1:  # If only 1 peak, assign to G1
                 phase_candidates[0, :] = peak_candidates[0, :2]
-            else: # take the ones that are best seperated
+            else:  # take the ones that are best seperated
                 p1 = peak_candidates[:, 0]
                 p2 = np.zeros(peak_candidates.shape[0])
                 p3 = np.concatenate((p1, p2)).reshape(2, len(p2)).T
@@ -452,17 +456,24 @@ def get_phase_candidates(peak_candidates, edu_shift, edu_s_min):
                     peak_candidates[:, 2].reshape(peak_candidates.shape[0], 1),
                     1, peak_candidates.shape[0])
                 repmat4 = np.matlib.repmat(
-                    peak_candidates[:, 2].reshape(peak_candidates.shape[0], 1).T,
+                    peak_candidates[:, 2].reshape(
+                        peak_candidates.shape[0], 1).T,
                     peak_candidates.shape[0], 1)
-                pk_dist = (squareform(pdist(p3)) > 0.6*np.log10(2)) * (repmat3 + repmat4)
+                pk_dist = (squareform(pdist(p3)) >
+                           0.6 * np.log10(2)) * (repmat3 + repmat4)
                 pk_dist_max_loc = (pk_dist == np.max(pk_dist)).argmax()
-                pk_dist_idx1, pk_dist_idx2 = np.unravel_index(pk_dist_max_loc, pk_dist.shape)                
+                pk_dist_idx1, pk_dist_idx2 = np.unravel_index(pk_dist_max_loc,
+                                                              pk_dist.shape)
                 if peak_candidates[pk_dist_idx1, 0] > peak_candidates[pk_dist_idx2, 0]:
-                    phase_candidates[0, :] = peak_candidates[pk_dist_idx2, [0, 1]]
-                    phase_candidates[2, :] = peak_candidates[pk_dist_idx1, [0, 1]]
+                    phase_candidates[0, :] = peak_candidates[pk_dist_idx2,
+                                                             [0, 1]]
+                    phase_candidates[2, :] = peak_candidates[pk_dist_idx1,
+                                                             [0, 1]]
                 else:
-                    phase_candidates[0, :] = peak_candidates[pk_dist_idx1, [0, 1]]
-                    phase_candidates[2, :] = peak_candidates[pk_dist_idx2, [0, 1]]
+                    phase_candidates[0, :] = peak_candidates[pk_dist_idx1,
+                                                             [0, 1]]
+                    phase_candidates[2, :] = peak_candidates[pk_dist_idx2,
+                                                             [0, 1]]
     return phase_candidates
 
 
@@ -474,7 +485,7 @@ def get_g1_dna_peak(log_dna, x_dna, log_edu, edu_shift,
     """ Get position of G1 peak in log DNA space
     Parameters
     ----------
-    
+
     Returns
     -------
     dna_g1_loc: numpy float
@@ -548,7 +559,7 @@ def get_low_edu_peaks(log_edu, px_edu, edu_shift,
     f_edu_low = get_kde(log_edu[log_edu_low_bool], px_edu)
     bin_counts, _ = histc(log_edu[log_edu_low_bool], px_edu)
     # Check discrepency in array length when using 3
-    f_edu_low[[True, smooth.smooth(bin_counts, 2.99, 'flat') <= 1/3]] = 0
+    f_edu_low[smooth.smooth(bin_counts, 2.99, 'flat') <= 1/3] = 0
 
     edu_amp, edu_loc, _ = findpeaks(smooth.smooth(f_edu_low, nsmooth).tolist(),
                                     npeaks=2)
@@ -664,7 +675,7 @@ def get_s_phase_dna_loc(log_dna, x_dna,
     log_edu: 1d array
         log EdU intensities across all cells in a well
     edu_cutoff: int
-    
+
     nsmooth: int
        smoothing parameter
     ax: subplot object
@@ -980,7 +991,7 @@ def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna, dna_peaks,
     return fractions, cell_id, peaks
 
 
-def plot_summary(dna, edu, fig, x_dna=None, px_edu=None,
+def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
                  title=None, plot='all', plot_num=None):
     """ summary plots depicting kernel density estimates for EdU and DNA,
     phase candidates and cell cycle fractions
@@ -1006,7 +1017,7 @@ def plot_summary(dna, edu, fig, x_dna=None, px_edu=None,
     Returns
     -------
     fractions: dict
-        dictionary where keys are cell cycle phases and 
+        dictionary where keys are cell cycle phases and
         values are fractions of cells in each phase
     cell_id: 1d array
         membership of each cell in cell cycle phase (1=G1, 2=S, 3=G2)
@@ -1033,12 +1044,10 @@ def plot_summary(dna, edu, fig, x_dna=None, px_edu=None,
         px_edu = np.arange(-0.2, 5.3, .02)
     if x_dna is None:
         x_dna = np.arange(2.5, 8, 0.02)
-    # if ax is None:
-    #     ax = plt.figure()
+
     log_dna = compute_log_dna(dna, x_dna)
 
     edu_shift, offset_edu, edu_g1_max, edu_s_min = get_edu_gates(edu, px_edu,
-                                                                 plot=False,
                                                                  ax=ax1)
     log_edu = compute_log_edu(edu, px_edu, offset_edu)
     h = get_2d_histogram(log_dna, x_dna, log_edu, px_edu)
@@ -1056,10 +1065,12 @@ def plot_summary(dna, edu, fig, x_dna=None, px_edu=None,
     low_edu_peaks = get_low_edu_peaks(log_edu, px_edu, edu_shift,
                                       edu_g1_max,
                                       log_dna, dna_g1_loc, nsmooth=5)
-    edu_peaks, edu_cutoff, edu_lims, edu_gates = get_high_edu_peaks(log_edu, px_edu,
+    edu_peaks, edu_cutoff, edu_lims, edu_gates = get_high_edu_peaks(log_edu,
+                                                                    px_edu,
                                                                     edu_shift,
                                                                     low_edu_peaks,
-                                                                    log_dna, dna_g1_loc,
+                                                                    log_dna,
+                                                                    dna_g1_loc,
                                                                     nsmooth=5)
 
     dna_s_loc = get_s_phase_dna_loc(log_dna, x_dna, dna_g1_loc,
