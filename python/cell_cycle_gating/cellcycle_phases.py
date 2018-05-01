@@ -287,7 +287,7 @@ def imregionalmax(f):
     """
     # define an 8-connected neighborhood
     neighborhood = generate_binary_structure(2, 2)
-    regional_max = maximum_filter(f, footprint=neighborhood)
+    regional_max = maximum_filter(f, footprint=neighborhood, mode='constant')
     peak_2d = (f == regional_max)
     return peak_2d
 
@@ -321,7 +321,7 @@ def get_2d_histogram(log_dna, x_dna, log_edu, px_edu):
     return h
 
 
-def get_2D_peak(h, x_dna, px_edu, nsmooth=5):
+def get_2D_peak(h, x_dna, px_edu, nsmooth=5, dv=30):
     """ Return peaks candidates from 2D readout of DNA and EdU
     Parameters
     ----------
@@ -347,7 +347,7 @@ def get_2D_peak(h, x_dna, px_edu, nsmooth=5):
     pre_peak_candidates = np.array([x_dna[y], px_edu[x], f[peak_2d]]).T
     peak_candidates = pre_peak_candidates[
         ((px_edu[x] > (nsmooth + 2) * (px_edu[1] - px_edu[0])) &
-         (f[peak_2d] > 1e-5) & (f[peak_2d] > np.max(f[peak_2d]/30))),
+         (f[peak_2d] > 1e-5) & (f[peak_2d] > np.max(f[peak_2d]/dv))),
         :]
 
     # Sort by 3rd column (descending order)
@@ -358,12 +358,14 @@ def get_2D_peak(h, x_dna, px_edu, nsmooth=5):
 
 def iterate_2D_peak(h, x_dna, px_edu, nsmooth=5):
     peak_candidates, lenp = get_2D_peak(h, x_dna, px_edu, nsmooth)
-    if peak_candidates.shape[0] < 2:
+    if peak_candidates.shape[0] == 2:
+        peak_candidates = peak_candidates
+    elif peak_candidates.shape[0] < 2:
         nsmooth = 0.5 * nsmooth
-        peak_candidates, lenp = get_2D_peak(h, x_dna, px_edu, nsmooth)
+        peak_candidates, lenp = get_2D_peak(h, x_dna, px_edu, nsmooth, dv=20)
     elif (lenp > 2 * peak_candidates.shape[0]) | (lenp > 5):
         nsmooth = 2 * nsmooth
-        peak_candidates, lenp = get_2D_peak(h, x_dna, px_edu, nsmooth)
+        peak_candidates, lenp = get_2D_peak(h, x_dna, px_edu, nsmooth, dv=60)
     return peak_candidates
 
 
