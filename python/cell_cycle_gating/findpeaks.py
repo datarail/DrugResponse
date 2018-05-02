@@ -1,12 +1,14 @@
 import peakutils
 import numpy as np
 from scipy.stats import gaussian_kde
-import scipy.io as sio
-import matplotlib.pyplot as plt
+
 
 def get_prominence_reference_level(signal, peak, peak_loc):
-    """ Returns the amplitude and location of the lower reference level of a peaks prominence
-    Note that prominence is the the length from the reference level upto the peak
+    """Returns the amplitude and location of the lower reference
+    level of a peaks prominence.
+    Note that prominence is the the length from the reference level
+    upto the peak
+
     Paramters:
     ----------
     signal: 1D-array
@@ -14,16 +16,17 @@ def get_prominence_reference_level(signal, peak, peak_loc):
        amplitude of peak whose prominece is to be computed
     peak_loc: float
        location on X-axis of peak whose prominence is to be computed
-    
+
     Return:
     -------
-    reference_loc: float
-       location of X-axis of peak whose prominence is to be computed. Should equal peak_loc
-    reference_leve: float
-       lower reference level of peak prominence. 
+    reference_loc : float
+       location of X-axis of peak whose prominence is to be computed.
+       Should equal peak_loc
+    reference_level : float
+       lower reference level of peak prominence.
     """
     left_range = signal[:peak_loc+1]
-    if  peak != np.max(left_range):
+    if peak != np.max(left_range):
         sorted_lr = sorted(left_range)
         sorted_peak_loc = sorted_lr.index(peak)
         left_crossing = sorted_lr[sorted_peak_loc + 1]
@@ -42,7 +45,7 @@ def get_prominence_reference_level(signal, peak, peak_loc):
         right_crossing = sorted_rr[sorted_peak_loc + 1]
     else:
         right_crossing = right_range[-1]
-    rc_indeces = np.where(np.array(signal) == right_crossing)[0]    
+    rc_indeces = np.where(np.array(signal) == right_crossing)[0]
     rc_index = [ri for ri in rc_indeces if ri > peak_loc][0]
     # rc_index = signal.index(right_crossing)
     right_range_min = np.min(signal[peak_loc:rc_index+1])
@@ -59,12 +62,13 @@ def get_width_half_prominence(signal, peak, peak_loc):
     _, reference_level = get_prominence_reference_level(signal, peak, peak_loc)
     half_prominence = reference_level + 0.5 * (peak - reference_level)
     left_range = signal[:peak_loc+1]
-    lhp = list(filter(lambda x: x<half_prominence, left_range))[-1]
+    lhp = list(filter(lambda x: x < half_prominence, left_range))[-1]
     # lhp = min(left_range, key=lambda x:abs(x-half_prominence))
     left_width_indeces = np.where(np.array(signal) == (lhp))[0]
-    left_width_ind = [li for li in left_width_indeces.tolist() if li < peak_loc][-1]
+    left_width_ind = [li for li in left_width_indeces.tolist()
+                      if li < peak_loc][-1]
     right_range = signal[peak_loc:]
-    rhp = list(filter(lambda x: x< half_prominence, right_range))[0]
+    rhp = list(filter(lambda x: x < half_prominence, right_range))[0]
     right_width_indeces = np.where(np.array(signal) == (rhp))[0]
     # rhp = min(right_range, key=lambda x:abs(x-half_prominence))
     right_width_ind = [ri for ri in right_width_indeces if ri > peak_loc][0]
@@ -72,7 +76,7 @@ def get_width_half_prominence(signal, peak, peak_loc):
 
 
 def get_kde(x, x_grid, bandwidth=None):
-    # Refer to https://jakevdp.github.io/blog/2013/12/01/kernel-density-estimation/
+    # https://jakevdp.github.io/blog/2013/12/01/kernel-density-estimation/
     if bandwidth:
         kde = gaussian_kde(x, bandwidth / x.std(ddof=1))
     else:
@@ -81,25 +85,27 @@ def get_kde(x, x_grid, bandwidth=None):
 
 
 def findpeaks(signal, npeaks=None):
-    """ Returns the amplitude , location and half-prominence width of peaks
+    """Returns the amplitude , location and half-prominence width of peaks
     from the input signal
+
     Parameters:
     ----------
-    signal: list
-    npeaks: int 
-         number of peaks, locations and width returned sorted from highest to lowes amplitude peaks
-    
+    signal : list
+    npeaks : int
+         number of peaks, locations and width returned sorted
+         from highest to lowes amplitude peaks
+
     Returns:
     --------
-    peak_amp: array of float
+    peak_amp : array of float
          amplitude of peaks
-    peak_loc: array of float
+    peak_loc : array of float
          location of peaks
-    width: array of float
-        list of widths at half-prominence 
-       
+    width : array of float
+        list of widths at half-prominence
+
     """
-    peak_loc = peakutils.peak.indexes(signal)
+    peak_loc = peakutils.peak.indexes(signal, thres=0.25)
     peak_amp = [signal[loc] for loc in peak_loc]
     width = []
     for loc, value in zip(peak_loc, peak_amp):
@@ -115,17 +121,3 @@ def findpeaks(signal, npeaks=None):
                 np.array(sorted_width[:npeaks]))
     else:
         return np.array(peak_amp), np.array(peak_loc), np.array(width)
-
-
-# l = sio.loadmat('peaksig.mat')
-# ps = l['PeakSig'][0].tolist()
-# plt.plot(ps)
-# peak_loc = peakutils.peak.indexes(ps)
-# peak_values = [ps[ind] for ind in peak_loc]
-# plt.scatter(peak_loc, peak_values)
-# for loc, values in zip(peak_loc, peak_values):
-#     ploc, pval = get_prominence_reference_level(ps, values, loc)
-#     plt.plot([loc, loc], [pval, values])
-#     lw, lr, hp = get_width_half_prominence(ps, values, loc)
-#     plt.plot([lw, lr], [hp, hp])
-    
