@@ -364,7 +364,7 @@ def iterate_2D_peak(h, x_dna, px_edu, nsmooth=5):
         nsmooth = 0.5 * nsmooth
         peak_candidates, lenp = get_2D_peak(h, x_dna, px_edu, nsmooth, dv=20)
     elif (lenp > 2 * peak_candidates.shape[0]) | (lenp > 5):
-        nsmooth = 2 * nsmooth
+        nsmooth = 1.8 * nsmooth
         peak_candidates, lenp = get_2D_peak(h, x_dna, px_edu, nsmooth, dv=60)
     return peak_candidates
 
