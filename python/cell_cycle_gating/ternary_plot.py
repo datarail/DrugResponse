@@ -24,12 +24,14 @@ def generate_heatmap_data(scale=5):
     return d
 
 
-def get_drug_trajectories(dfi, cell_line, drugs):
+def get_drug_trajectories(dfi, cell_line, drugs=None):
     drug_trajectories = {}
     drug_scatter = {}
     drug_conc = {}
     dfs = dfi[dfi.cell_line == cell_line].copy()
     dfs = recompute_fractions(dfs)
+    if drugs is None:
+        drugs = dfs.agent.unique()
     for drug in drugs:
         print(drug)
         dfsd = dfs[dfs.agent == drug].copy()
@@ -43,7 +45,7 @@ def get_drug_trajectories(dfi, cell_line, drugs):
     return drug_trajectories, drug_scatter, drug_conc
 
 
-def plot_trajectories(dfi, cell_line, drugs):
+def plot_trajectories(dfi, cell_line, drugs=None):
     dfi['agent'] = dfi['agent'].fillna('control')
     colrs = sns.color_palette("hls", len(drugs))
     colrs[np.argmax(drugs == 'control')] = (0, 0, 0)
@@ -62,13 +64,12 @@ def plot_trajectories(dfi, cell_line, drugs):
         facecolor[:, :3] = colr_dict[drug]
         if drug != 'control':
             fc = [1 - (ds-amin)/amax for ds in drug_conc[drug]]
-            facecolor[:, 3] = fc 
+            facecolor[:, 3] = fc
         else:
             drug_conc[drug] = [1] * len(drug_conc[drug])
             fc = [0.5] * len(drug_conc[drug])
-            facecolor[:, 3] = fc 
-                                
-        #tax.plot(10 * drug_trajectories[drug], linewidth=0.5,
+            facecolor[:, 3] = fc
+        # tax.plot(10 * drug_trajectories[drug], linewidth=0.5,
         #          label=drug, linestyle='--', color=colr_dict[drug])
         tax.scatter(10 * drug_scatter[drug], label=drug,
                     facecolor=facecolor, edgecolor=colr_dict[drug],
@@ -81,7 +82,7 @@ def plot_trajectories(dfi, cell_line, drugs):
     tax.clear_matplotlib_ticks()
     tax.show()
     return colr_dict
-    
+
 
 def recompute_fractions(dfs):
     df = dfs.copy()
