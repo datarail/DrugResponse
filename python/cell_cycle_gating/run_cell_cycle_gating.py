@@ -9,7 +9,7 @@ from cell_cycle_gating import cellcycle_phases as cc
 from cell_cycle_gating import ph3_filter as pf
 
 
-def run(object_level_directory, dfm=None):
+def run(object_level_directory, dfm=None, ph3_channel=True):
     """ Executes cell cycle gating on all wells for which object level
     data is available in object_level_directory. Plots and saves summary pdf
     of DNA v EdU distribution with automated gatings. A dataframe summarizing
@@ -21,7 +21,8 @@ def run(object_level_directory, dfm=None):
         name of folder containing object level data for a single plate
     dfm : Optional[pandas dataframe]
         metadata table of experimental design. Default is None.
-
+    ph3_channel : Optional[bool]
+        True if data on pH3 intensity is in object level data.
     Returns
     -------
     df : pandas dataframe
@@ -51,13 +52,15 @@ def run(object_level_directory, dfm=None):
         edu = np.array(df['Nuclei Selected - EdUINT'].tolist())
         dna = np.array(df['Nuclei Selected - DNAcontent'].tolist())
         ldr = np.array(df['Nuclei Selected - LDRTXT SER Spot 8 px'].tolist())
-        ph3 = np.array(df['Nuclei Selected - pH3INT'].tolist())
-
+        
         edu_notnan = ~np.isnan(edu)
         edu = edu[edu_notnan]
         dna = dna[edu_notnan]
         ldr = ldr[edu_notnan]
-        ph3 = ph3[edu_notnan]
+
+        if ph3_channel:
+            ph3 = np.array(df['Nuclei Selected - pH3INT'].tolist())
+            ph3 = ph3[edu_notnan]
 
         try:
             # Get live dead
@@ -79,9 +82,10 @@ def run(object_level_directory, dfm=None):
                                                        plot_num=i)
 
             # Revise phases based on pH3
-            f_ph3, ph3_cutoff, ph3_lims = pf.get_ph3_gates(ph3, cell_identity)
-            log_ph3 = pf.compute_log_ph3(ph3)
-            fractions = pf.evaluate_Mphase(log_ph3, ph3_cutoff, cell_identity)
+            if ph3_channel:
+                f_ph3, ph3_cutoff, ph3_lims = pf.get_ph3_gates(ph3, cell_identity)
+                log_ph3 = pf.compute_log_ph3(ph3)
+                fractions = pf.evaluate_Mphase(log_ph3, ph3_cutoff, cell_identity)
 
             fractions['well'] = well
             fractions['cell_count__total'] = len(dna)
