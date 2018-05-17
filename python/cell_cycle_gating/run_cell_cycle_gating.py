@@ -108,10 +108,17 @@ def run(object_level_directory, dfm=None, ph3_channel=True):
                   (i+1, len(object_level_files)))
             plt.close('all')
     pdf_pages.close()
-    df_summary = df_summary[['well', 'cell_count__total',
-                             'cell_count', 'cell_count__dead',
-                             'G1', 'S', 'G2', 'M',
-                             'S_dropout', 'other']]
+    if ph3_channel:
+        summary_cols = ['well', 'cell_count__total',
+                        'cell_count', 'cell_count__dead',
+                        'G1', 'S', 'G2', 'M',
+                        'S_dropout', 'other']
+    else:
+        summary_cols = ['well', 'cell_count__total',
+                        'cell_count', 'cell_count__dead',
+                        'G1', 'S', 'G2',
+                        'S_dropout', 'other'
+    df_summary = df_summary[summary_cols]
     # Merge summary table with metadata if provided
     if dfm is not None:
         df_summary.index = df_summary['well'].tolist()
