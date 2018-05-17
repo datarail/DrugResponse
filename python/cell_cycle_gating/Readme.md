@@ -1,17 +1,14 @@
 # Deep Dye Drop based cell cycle gating
 
-## Requirements
-* peakutils (available on [PyPI](https://pypi.python.org/pypi/PeakUtils)). It can be installed from command line as shown below
-  ```
-  $ pip install peakutils
-  ```
 ## Installation
 * The cell cycle gating repository can be installed from command line as shown belo
   ```
   $ git clone https://github.com/datarail/DrugResponse.git
   ```
-* add `datarail/DrugResponse/python/cell_cycle_gating` to your `PYTHONPATH` to enable importing the modules under `cell_cycle_gating` from any location on your machine
-
+* To install dependencies and enable importing modules from any location on your local machine, `cd` into `DrugResponse/python`, followed by the command below.
+   ```
+   $ pip install -e .
+   ```
 ## Getting started
 * cd into the directory that contains the object level data folders. 
 * Start a Jupyter notebook or Ipython session.
