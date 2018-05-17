@@ -117,7 +117,7 @@ def run(object_level_directory, dfm=None, ph3_channel=True):
         summary_cols = ['well', 'cell_count__total',
                         'cell_count', 'cell_count__dead',
                         'G1', 'S', 'G2',
-                        'S_dropout', 'other'
+                        'S_dropout', 'other']
     df_summary = df_summary[summary_cols]
     # Merge summary table with metadata if provided
     if dfm is not None:
