@@ -1,0 +1,11 @@
+barcode,agent,concentration,cell_line,well
+EX_01,drug1,0.0,HeLa,C12
+EX_01,drug1,0.001,HeLa,C05
+EX_01,drug1,0.01,HeLa,C11
+EX_01,drug1,0.1,HeLa,C04
+EX_01,drug1,1.0,HeLa,C10
+EX_01,drug2,0.0,HeLa,C09
+EX_01,drug2,1.0,HeLa,C07
+EX_01,drug2,0.01,HeLa,C08
+EX_01,drug2,0.0,HeLa,C06
+EX_01,drug2,0.001,HeLa,C03
