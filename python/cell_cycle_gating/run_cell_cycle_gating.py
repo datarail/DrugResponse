@@ -101,6 +101,11 @@ def run(object_level_directory, dfm=None, ph3_channel=True):
         except IndexError:
             print(well, 'IndexError')
             pass
+    # your code that will (maybe) throw
+        except np.linalg.LinAlgError as e:
+            if 'Singular matrix' in str(e):
+                print(well, 'Singular matrix error')
+                pass
         if (i + 1) % nb_plots_per_page == 0 or (i + 1) == nb_plots:
             plt.tight_layout()
             pdf_pages.savefig(fig)
