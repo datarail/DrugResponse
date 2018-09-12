@@ -7,6 +7,10 @@ from matplotlib.backends.backend_pdf import PdfPages
 from cell_cycle_gating import dead_cell_filter as dcf
 from cell_cycle_gating import cellcycle_phases as cc
 from cell_cycle_gating import ph3_filter as pf
+import matplotlib
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+
 
 
 def run(object_level_directory, dfm=None, ph3_channel=True):

@@ -1,6 +1,10 @@
 from cell_cycle_gating import findpeaks
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+
 
 
 def get_brdugates(brdu, x_brdu=None, plotting=False):

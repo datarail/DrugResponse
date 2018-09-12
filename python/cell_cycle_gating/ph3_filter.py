@@ -5,6 +5,10 @@ from cell_cycle_gating import smooth
 from scipy.stats.mstats import mquantiles as quantile
 from cell_cycle_gating.findpeaks import get_kde, findpeaks
 import matplotlib.gridspec as gridspec
+import matplotlib
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+
 
 
 def compute_log_ph3(ph3, x_ph3=None):

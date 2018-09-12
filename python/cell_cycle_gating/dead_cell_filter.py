@@ -6,6 +6,10 @@ import matplotlib.pyplot as plt
 from cell_cycle_gating import smooth
 from scipy.stats import gaussian_kde
 import matplotlib.gridspec as gridspec
+import matplotlib
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+
 
 
 def get_ldrgates(ldrtxt, x_ldr=None):

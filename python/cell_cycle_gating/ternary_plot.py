@@ -3,6 +3,10 @@ import numpy as np
 from scipy.interpolate import interp1d
 import math
 import seaborn as sns
+import matplotlib
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+
 
 
 def color_point(x, y, z, scale):

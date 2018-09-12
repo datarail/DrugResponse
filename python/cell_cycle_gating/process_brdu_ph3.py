@@ -6,6 +6,10 @@ from cell_cycle_gating import brdu_gating as bg
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
+import matplotlib
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+
 
 
 def get_gates_per_well(dfm, object_level_directory, object_level_files):
