@@ -217,7 +217,7 @@ def plot_edu_dna_scatter(dna, edu, offset_edu,
     xy = np.vstack([log_dna, log_edu])
     z = gaussian_kde(xy)(xy)
     if ax is not None:
-        ax.scatter(log_dna, log_edu, c=z, s=2)
+        ax.scatter(log_dna, log_edu, c=z, s=2, rasterized=True)
         ax.plot([dna_gates[i] for i in [0, 0, 3, 3, 0, 0, 1, 1, 0, 2, 2, 3]],
                 [-1, edu_gates[1], edu_gates[1], -1,
                  np.nan, edu_gates[0], edu_gates[0],
