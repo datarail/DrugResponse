@@ -13,7 +13,7 @@ matplotlib.rcParams['ps.fonttype'] = 42
 
 
 
-def run(object_level_directory, dfm=None, ph3_channel=True):
+def run(object_level_directory, ndict, dfm=None, ph3_channel=True, ldr=True):
     """ Executes cell cycle gating on all wells for which object level
     data is available in object_level_directory. Plots and saves summary pdf
     of DNA v EdU distribution with automated gatings. A dataframe summarizing
@@ -33,7 +33,7 @@ def run(object_level_directory, dfm=None, ph3_channel=True):
        well level summary of number of live/dead cells and fraction of
        cells in each phase of the cell cycle
     """
-    plt.ioff()
+    plt.ioff()   
     if dfm is not None:
         dfm_ord = merge_metadata(dfm, object_level_directory)
         object_level_files = dfm_ord['object_level_file'].tolist()
@@ -50,27 +50,36 @@ def run(object_level_directory, dfm=None, ph3_channel=True):
         if i % nb_plots_per_page == 0:
             fig = plt.figure(figsize=(8.27, 11.69), dpi=10)
         df = pd.read_table('%s/%s' % (object_level_directory, file))
+        df = map_channel_names(df, ndict)
         well = re.search('result.(.*?)\[', file).group(1)
         well = "%s%s" % (well[0], well[1:].zfill(2))
 
-        edu = np.array(df['Nuclei Selected - EdUINT'].tolist())
-        dna = np.array(df['Nuclei Selected - DNAcontent'].tolist())
-        ldr = np.array(df['Nuclei Selected - LDRTXT SER Spot 8 px'].tolist())
-        
+        #edu = np.array(df['Nuclei Selected - EdUINT'].tolist())
+        #dna = np.array(df['Nuclei Selected - DNAcontent'].tolist())
+        #ldr = np.array(df['Nuclei Selected - LDRTXT SER Spot 8 px'].tolist())
+        edu = np.array(df['edu'].tolist())
+        dna = np.array(df['dna'].tolist())
+
         edu_notnan = ~np.isnan(edu)
         edu = edu[edu_notnan]
         dna = dna[edu_notnan]
-        ldr = ldr[edu_notnan]
+
+        if ldr:
+            ldr = np.array(df['ldr'].tolist())
+            ldr = ldr[edu_notnan]     
 
         if ph3_channel:
-            ph3 = np.array(df['Nuclei Selected - pH3INT'].tolist())
+            #ph3 = np.array(df['Nuclei Selected - pH3INT'].tolist())
+            ph3 = np.array(df['ph3'].tolist())
             ph3 = ph3[edu_notnan]
 
         try:
             # Get live dead
-            ldr_gates = dcf.get_ldrgates(ldr)
-            dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
-            a, d, _ = dcf.live_dead(ldr, ldr_gates, dna, dna_gates)
+            if ldr:
+                ldr_gates = dcf.get_ldrgates(ldr)
+                dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
+                a, d, _ = dcf.live_dead(ldr, ldr_gates, dna, dna_gates)
+
             # Get phases based on DNA and EdU
             if dfm is not None:
                 # dfm_ord.index = dfm_ord.well
@@ -91,10 +100,12 @@ def run(object_level_directory, dfm=None, ph3_channel=True):
                 log_ph3 = pf.compute_log_ph3(ph3)
                 fractions = pf.evaluate_Mphase(log_ph3, ph3_cutoff, cell_identity)
 
+            if ldr:
+                fractions['cell_count'] = a
+                fractions['cell_count__dead'] = d
             fractions['well'] = well
             fractions['cell_count__total'] = len(dna)
-            fractions['cell_count'] = a
-            fractions['cell_count__dead'] = d
+
             df_summary = df_summary.append(fractions, ignore_index=True)
         except ValueError:
             print(well, ' ValueError')
@@ -239,3 +250,8 @@ def get_corpse_count(obj):
         return dfc
     else:
         return None
+
+
+ def map_channel_names(df, ndict):
+     df = df.rename(columns=ndcit)
+     return df
