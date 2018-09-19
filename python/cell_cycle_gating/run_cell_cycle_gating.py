@@ -13,7 +13,7 @@ matplotlib.rcParams['ps.fonttype'] = 42
 
 
 
-def run(object_level_directory, ndict, dfm=None, ph3_channel=True, ldr=True):
+def run(object_level_directory, ndict, dfm=None, ph3_channel=True, ldr_channel=True):
     """ Executes cell cycle gating on all wells for which object level
     data is available in object_level_directory. Plots and saves summary pdf
     of DNA v EdU distribution with automated gatings. A dataframe summarizing
@@ -48,7 +48,7 @@ def run(object_level_directory, ndict, dfm=None, ph3_channel=True, ldr=True):
     # nb_pages = int(np.ceil(nb_plots / float(nb_plots_per_page)))
     for i, file in enumerate(object_level_files):
         if i % nb_plots_per_page == 0:
-            fig = plt.figure(figsize=(8.27, 11.69), dpi=10)
+            fig = plt.figure(figsize=(8.27, 11.69), dpi=100)
         df = pd.read_table('%s/%s' % (object_level_directory, file))
         df = map_channel_names(df, ndict)
         well = re.search('result.(.*?)\[', file).group(1)
@@ -64,7 +64,7 @@ def run(object_level_directory, ndict, dfm=None, ph3_channel=True, ldr=True):
         edu = edu[edu_notnan]
         dna = dna[edu_notnan]
 
-        if ldr:
+        if ldr_channel:
             ldr = np.array(df['ldr'].tolist())
             ldr = ldr[edu_notnan]     
 
@@ -75,10 +75,11 @@ def run(object_level_directory, ndict, dfm=None, ph3_channel=True, ldr=True):
 
         try:
             # Get live dead
-            if ldr:
+            if ldr_channel:
                 ldr_gates = dcf.get_ldrgates(ldr)
                 dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
                 a, d, _ = dcf.live_dead(ldr, ldr_gates, dna, dna_gates)
+                #print(a, d)
 
             # Get phases based on DNA and EdU
             if dfm is not None:
@@ -100,7 +101,7 @@ def run(object_level_directory, ndict, dfm=None, ph3_channel=True, ldr=True):
                 log_ph3 = pf.compute_log_ph3(ph3)
                 fractions = pf.evaluate_Mphase(log_ph3, ph3_cutoff, cell_identity)
 
-            if ldr:
+            if ldr_channel:
                 fractions['cell_count'] = a
                 fractions['cell_count__dead'] = d
             fractions['well'] = well
@@ -128,16 +129,14 @@ def run(object_level_directory, ndict, dfm=None, ph3_channel=True, ldr=True):
                   (i+1, len(object_level_files)))
             plt.close('all')
     pdf_pages.close()
+    summary_cols = ['well', 'cell_count__total',
+                    # 'cell_count', 'cell_count__dead',
+                    'G1', 'S', 'G2',
+                    'S_dropout', 'other']
     if ph3_channel:
-        summary_cols = ['well', 'cell_count__total',
-                        'cell_count', 'cell_count__dead',
-                        'G1', 'S', 'G2', 'M',
-                        'S_dropout', 'other']
-    else:
-        summary_cols = ['well', 'cell_count__total',
-                        'cell_count', 'cell_count__dead',
-                        'G1', 'S', 'G2',
-                        'S_dropout', 'other']
+        summary_cols.append('M')
+    if ldr_channel:
+        summary_cols += ['cell_count', 'cell_count__dead']
     df_summary = df_summary[summary_cols]
     # Merge summary table with metadata if provided
     if dfm is not None:
@@ -252,6 +251,6 @@ def get_corpse_count(obj):
         return None
 
 
- def map_channel_names(df, ndict):
-     df = df.rename(columns=ndcit)
-     return df
+def map_channel_names(df, ndict):
+    df = df.rename(columns=ndict)
+    return df
