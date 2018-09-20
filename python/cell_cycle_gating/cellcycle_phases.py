@@ -1107,7 +1107,7 @@ def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
     plot_edu_dna_scatter(dna, edu, offset_edu,
                          dna_gates, edu_gates,
                          dna_lims, edu_lims,
-                         x_dna=None, px_edu=None,
+                         x_dna=None, px_edu=px_edu,
                          ax=ax4)
 
     fractions, cell_id, peaks = evaluate_cell_cycle_phase(log_dna, dna_gates,

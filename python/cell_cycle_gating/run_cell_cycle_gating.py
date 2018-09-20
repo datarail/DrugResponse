@@ -13,7 +13,9 @@ matplotlib.rcParams['ps.fonttype'] = 42
 
 
 
-def run(object_level_directory, ndict, dfm=None, ph3_channel=True, ldr_channel=True):
+def run(object_level_directory, ndict, dfm=None,
+        ph3_channel=True, ldr_channel=True,
+        px_edu=None):
     """ Executes cell cycle gating on all wells for which object level
     data is available in object_level_directory. Plots and saves summary pdf
     of DNA v EdU distribution with automated gatings. A dataframe summarizing
@@ -93,7 +95,8 @@ def run(object_level_directory, ndict, dfm=None, ph3_channel=True, ldr_channel=T
             fractions, cell_identity = cc.plot_summary(dna, edu, fig,
                                                        title=title,
                                                        plot='scatter',
-                                                       plot_num=i)
+                                                       plot_num=i,
+                                                       px_edu=px_edu)
 
             # Revise phases based on pH3
             if ph3_channel:
