@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 from cell_cycle_gating import cellcycle_phases as cc
 from cell_cycle_gating import dead_cell_filter as dcf
 from cell_cycle_gating import ph3_filter as pf
+import pandas as pd
+import re
 
 
 def update_gating(dna, edu, px_edu=None, x_dna=None):
@@ -91,9 +93,38 @@ def update_gating(dna, edu, px_edu=None, x_dna=None):
         sg1_left.reset()
         sg1_right.reset()
         sg2_left.reset()
-        sg2_right.reset()       
+        sg2_right.reset()
     button.on_clicked(reset)
-    plt.show()
+    #global close_event
+    #close_event = 0
+    # def reset2(event):
+    #     global close_event
+    #     #fig.canvas.mpl_disconnect(cid)
+    #     close_event += 1
+    #     print(close_event)
+    #     plt.close()
+
+    #print('after', close_event)    
+    #button.on_clicked(reset2)
+    #if close_event:
+    #    plt.pause(1)
+    #else:
+    plt.pause(30)
+
+    #def onclick(event):
+    #    global offset
+    #    offset = event.ydata
+    #    fig.canvas.mpl_disconnect(cid)
+    #    plt.close()
+    #    return     
+        
+    
+
+    #cid = fig.canvas.mpl_connect('button_press_event', onclick)
+    #plt.pause(30)
+     
+    #plt.close()
+
     
     ndna_gates = [sg1_left.val, sg1_right.val, sg2_left.val, sg2_right.val]
     nedu_gates = [sedu_lb.val, sedu_ub.val]
@@ -163,6 +194,7 @@ def manual_gating(dfs, obj_file, ndict, ldr_channel=True, ph3_channel=True,
 
     if ldr_channel:
         ldr_gates = dcf.get_ldrgates(ldr)
+        #dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
         a, d, _ = dcf.live_dead(ldr, ldr_gates, dna, ndna_gates)    
 
     if ph3_channel:
