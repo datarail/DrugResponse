@@ -107,7 +107,9 @@ ENV/
 *.m~
 *.asv
 
-# Developper associated codes
+# Jake associated codes
 jake*.*
 *.csv
 *.pdf
+*.png
+python/cell_cycle_gating/examples/DDR_example.ipynb
