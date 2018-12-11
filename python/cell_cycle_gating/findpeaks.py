@@ -5,19 +5,18 @@ from scipy.stats import gaussian_kde
 
 def get_prominence_reference_level(signal, peak, peak_loc):
     """Returns the amplitude and location of the lower reference
-    level of a peaks prominence.
-    Note that prominence is the the length from the reference level
-    upto the peak
+    level of a peaks prominence. Note that prominence is the 
+    the length from the reference level upto the peak
 
-    Paramters:
-    ----------
-    signal: 1D-array
-    peak: float
+    Paramters
+    ---------
+    signal : 1D-array
+    peak : float
        amplitude of peak whose prominece is to be computed
-    peak_loc: float
+    peak_loc : float
        location on X-axis of peak whose prominence is to be computed
 
-    Return:
+    Returns
     -------
     reference_loc : float
        location of X-axis of peak whose prominence is to be computed.
@@ -88,14 +87,14 @@ def findpeaks(signal, npeaks=None):
     """Returns the amplitude , location and half-prominence width of peaks
     from the input signal
 
-    Parameters:
+    Parameters
     ----------
     signal : list
     npeaks : int
          number of peaks, locations and width returned sorted
          from highest to lowes amplitude peaks
 
-    Returns:
+    Returns
     --------
     peak_amp : array of float
          amplitude of peaks

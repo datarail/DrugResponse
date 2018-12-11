@@ -16,7 +16,7 @@ matplotlib.rcParams['ps.fonttype'] = 42
 def run(object_level_directory, ndict, dfm=None,
         ph3_channel=True, ldr_channel=True,
         px_edu=None):
-    """ Executes cell cycle gating on all wells for which object level
+    """Executes cell cycle gating on all wells for which object level
     data is available in object_level_directory. Plots and saves summary pdf
     of DNA v EdU distribution with automated gatings. A dataframe summarizing
     results for each well is also saved.
@@ -24,11 +24,12 @@ def run(object_level_directory, ndict, dfm=None,
     Parameters
     ----------
     object_level_directory : str
-        name of folder containing object level data for a single plate
+                           name of folder containing object level data for a single plate
     dfm : Optional[pandas dataframe]
         metadata table of experimental design. Default is None.
     ph3_channel : Optional[bool]
-        True if data on pH3 intensity is in object level data.
+                True if data on pH3 intensity is in object level data.
+
     Returns
     -------
     df : pandas dataframe
@@ -204,6 +205,7 @@ def process_metadata_file(dfmeta):
     ----------
     dfmeta : pandas dataframe
        metadata file with wells mapped to treatment condition.
+
     Returns
     -------
     dfm : pandas dataframe
@@ -231,6 +233,7 @@ def get_corpse_count(obj):
     ----------
     obj : str
         path to folder containing object level data
+
 
     Returns
     -------

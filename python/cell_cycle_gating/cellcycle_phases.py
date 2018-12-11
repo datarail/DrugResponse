@@ -18,26 +18,28 @@ matplotlib.rcParams['ps.fonttype'] = 42
 
 
 def get_edu_gates(edu, px_edu=None, ax=None):
-    """ Returns estimate of max EdU for G1 gating and min EdU for S phase gating
+    """Returns estimate of max EdU for G1 gating and min EdU for S phase gating
+    
     Parameters
     ----------
-    edu: 1D array
+    edu : 1D array
          edu intensities across all cells in a given well
-    px_edu: 1D array
+    px_edu : 1D array
          uniformly spaced grid based expected EdU range
     plotting: boolean
          plots summary of edu gating if set to True
-    ax: subplot object
+    ax : subplot object
          passes subplot object specifying location on grid
+    
     Returns
     -------
-    edu_shift: float
+    edu_shift : float
         difference between G1/2 and S phases
     offset_edu: float
 
-    edu_g1_max: float
+    edu_g1_max : float
         G1 gating based on  EdU intensity
-    edu_s_min: float
+    edu_s_min : float
         S phase gating based on EdU intensity
     """
     if px_edu is None:
@@ -127,16 +129,18 @@ def get_edu_gates(edu, px_edu=None, ax=None):
 
 
 def compute_log_dna(dna, x_dna=None):
-    """ computes log of DNA content bounded by x_dna[2], x_dna[-3]
+    """Computes log of DNA content bounded by x_dna[2], x_dna[-3]
+    
     Parameters
     ----------
-    dna: 1D array
+    dna : 1D array
         DNA content of cells in a given well
-    x_dna: 1D array
+    x_dna : 1D array
         Expected distribution of DNA content (used as x-axis grid)
+    
     Return
     ------
-    log_dna: 1D array
+    log_dna : 1D array
         log transformed DNA content
     """
     if x_dna is None:
@@ -152,15 +156,17 @@ def compute_log_dna(dna, x_dna=None):
 
 
 def compute_log_edu(edu, px_edu, offset_edu):
-    """ computes log of EdU intensity bounded by px_edu[2], px_edu[-3]
+    """Computes log of EdU intensity bounded by px_edu[2], px_edu[-3]
+    
     Parameters
     ----------
-    edu: 1D array
+    edu : 1D array
         EdU intensity of cells in a given well
-    px_edu: 1D array
+    px_edu : 1D array
         Expected distribution of EdU intensity (used as x-axis grid)
-    Return
-    ------
+    
+    Returns
+    -------
     log_edu: 1D array
         log transformed EdU intensity
     """
@@ -180,30 +186,32 @@ def plot_edu_dna_scatter(dna, edu, offset_edu,
                          dna_lims, edu_lims,
                          x_dna=None, px_edu=None,
                          ax=None):
-    """ Plots EdU and DNA scatter plot, plots gates pre-computed on
+    """Plots EdU and DNA scatter plot, plots gates pre-computed on
         EdU and DNA content
+    
     Parameters
     ----------
-    dna: 1D array
+    dna : 1D array
         DNA content across cells in a given well
-    edu: 1D array
+    edu : 1D array
         EdU intensity across cells in a given well
-    offset_edu: float
+    offset_edu : float
 
-    dna_gates: list of float
+    dna_gates : list of float
         inner and outer gates obtained `get_dna_gates` function
-    dna_lims: list of float
+    dna_lims : list of float
         x-axis limits of plot obtained from `get_dna_gates` function
-    edu_gates: list of float
+    edu_gates : list of float
         gates obtained from `get_edu_gates` function
-    edu_lims: list of float
+    edu_lims : list of float
         y-axis limits of plot obtained from `get_edu_gates` function
-    x_dna: 1D array
+    x_dna : 1D array
         x-axis grid for DNA based on expected range of DNA content
-    px_edu: 1D array
+    px_edu : 1D array
         y-xis grid for EdU based on expected range of EdU intensity
-    ax: subplot object
+    ax : subplot object
         subplot to provide positional reference in plot output
+    
     Returns
     -------
 
@@ -233,18 +241,19 @@ def plot_edu_dna_scatter(dna, edu, offset_edu,
 
 
 def histc(X, bins):
-    """ Reproduced MATLAB histc function that returns counts per bin and
+    """Reproduced MATLAB histc function that returns counts per bin and
     bin index for each data point
+    
     Parameters
     ----------
-    X: 1D array
+    X : 1D array
        DNA content or EdU intensity across all cells in a well
-    bins: 1D array
+    bins : 1D array
        1D-grid based on expected range of DNA content or EdU intensity
 
     Returns
     -------
-    [r, map_to_bins]: tuple
+    [r, map_to_bins] : tuple
         r is the counts per bin. It should have the same length as bins
         map_to_bins is the bin index for each data point. It should have
         the same length as X
@@ -257,18 +266,19 @@ def histc(X, bins):
 
 
 def smooth_1d(y, lm=5):
-    """ Reproduces Marc's smoothing function which smooths the distribution
+    """Reproduces Marc's smoothing function which smooths the distribution
     of a 2D histogram, for instance 2D histogram of logEdU and logDNA
 
     Parameters
     ----------
-    y: ndarray
+    y : ndarray
       2D histogram of logEdU and logDNA
-    lm: int
+    lm : int
        smoothing patameter. Default is 5
+
     Returns:
     --------
-    z[0]: ndarray
+    z[0] : ndarray
        Should have the same shape as y
     """
     m, n = y.shape
@@ -281,13 +291,15 @@ def smooth_1d(y, lm=5):
 
 
 def imregionalmax(f):
-    """ Reproduced MATLAB's immregional function
+    """Reproduced MATLAB's immregional function
+    
     Parameters
     ----------
-    f: ndarray
+    f : ndarray
+    
     Returns
     -------
-    peak_2d: ndarray
+    peak_2d : ndarray
     """
     # define an 8-connected neighborhood
     neighborhood = generate_binary_structure(2, 2)
@@ -297,20 +309,22 @@ def imregionalmax(f):
 
 
 def get_2d_histogram(log_dna, x_dna, log_edu, px_edu):
-    """ Count the log intensity in each 2-D bin
+    """Count the log intensity in each 2-D bin
+    
     Parameters
     ----------
-    log_dna: 1D array
+    log_dna : 1D array
         log DNA intensities across all cells in a given well
-    x_dna: 1D array
+    x_dna : 1D array
         uniformly spaced grid based expected range of DNA content
-    log_edu: 1D array
+    log_edu : 1D array
          log edu intensities across all cells in a given well
-    px_edu: 1D array
+    px_edu : 1D array
          uniformly spaced grid based expected EdU range
+    
     Returns
     -------
-    h: ndarray
+    h : ndarray
        returns number of cells in each 2D grid of logDNA and logEdU
     """
     # get bin index for each log intensity value
@@ -326,21 +340,23 @@ def get_2d_histogram(log_dna, x_dna, log_edu, px_edu):
 
 
 def get_2D_peak(h, x_dna, px_edu, nsmooth=5, dv=30):
-    """ Return peaks candidates from 2D readout of DNA and EdU
+    """Return peaks candidates from 2D readout of DNA and EdU
+    
     Parameters
     ----------
-    h: ndarray
+    h : ndarray
        number of cells in each 2D grid of logDNA and logEdU
-    x_dna: 1d array
+    x_dna : 1d array
        uniformly spaced grid based expected DNA content
-    px_edu: 1d array
+    px_edu : 1d array
        uniformly spaced grid based expected EdU range
-    nsmooth: int
+    nsmooth : int
        smoothing parameter.Default is 5
+    
     Returns
     -------
-    peak_candidates: ndarray
-    num_candidates: int
+    peak_candidates : ndarray
+    num_candidates : int
        number of candidate peaks
     """
     g = smooth_1d(h, nsmooth)
@@ -400,17 +416,19 @@ def plot_2D_peaks(log_dna, x_dna, edu, px_edu,
 
 
 def get_phase_candidates(peak_candidates, edu_shift, edu_s_min):
-    """ Assign cell cycle phases based on candidate peaks
+    """Assign cell cycle phases based on candidate peaks
+    
     Parameter
     --------
-    peak_candidates: ndarray
+    peak_candidates : ndarray
        3-by-n array of n candidates for G1, S and G2 peaks
-    edu_shift: float
-    edu_s_min: float
+    edu_shift : float
+    edu_s_min : float
        location of s phase minima based on EdU content
+
     Returns
     -------
-    phase_candidates: ndarray
+    phase_candidates : ndarray
        3-by-n array comprising n candidates for G1, S and G2 peaks
     """
     phase_candidates = np.zeros((3, 2))
@@ -489,12 +507,13 @@ def get_g1_dna_peak(log_dna, x_dna, log_edu, edu_shift,
                     edu_s_min, edu_g1_max, phase_candidates,
                     ax=None):
     """ Get position of G1 peak in log DNA space
+
     Parameters
     ----------
 
     Returns
     -------
-    dna_g1_loc: numpy float
+    dna_g1_loc : numpy float
        position of G1 peak in log DNA space
     """
     f_dna = get_kde(log_dna, x_dna)
@@ -531,25 +550,27 @@ def get_low_edu_peaks(log_edu, px_edu, edu_shift,
                       edu_g1_max,
                       log_dna, dna_g1_loc, nsmooth=5):
     """ Returns peak for EdU intensities below edu_g1_max
+
     Parameters
     ----------
-    log_edu: 1d array
+    log_edu : 1d array
         log EdU intensities across all cells in a well
-    px_edu: 1d array
+    px_edu : 1d array
        uniformly spaced grid based expected EdU range
-    edu_shift: float
+    edu_shift : float
         Expected difference between G1/G2 and S phases in logEdU space
-    edu_g1_max: float
+    edu_g1_max : float
        G1 phase gating (realtive to S) based on EdU intensity
-    log_dna: 1d array
+    log_dna : 1d array
         log DNA content EdU intensities across all cells in a well
-    dna_g1_loc: float
+    dna_g1_loc : float
         G1 position based on log DNA
-    nsmooth: int
+    nsmooth : int
          smoothing parameter
+
     Returns
     ------
-    low_edu_peaks: 1d array
+    low_edu_peaks : 1d array
       peaks found within the range of EdU intensities below edu_g1_max
 
     """
@@ -582,36 +603,38 @@ def get_low_edu_peaks(log_edu, px_edu, edu_shift,
 def get_high_edu_peaks(log_edu, px_edu, edu_shift,
                        low_edu_peaks, log_dna, dna_g1_loc,
                        nsmooth=5):
-    """ Returns peak for EdU intensities above edu_shift values
+    """Returns peak for EdU intensities above edu_shift values
+
     Parameters
     ----------
-    log_edu: 1d array
+    log_edu : 1d array
         log EdU intensities across all cells in a well
-    px_edu: 1d array
+    px_edu : 1d array
        uniformly spaced grid based expected EdU range
-    edu_shift: float
+    edu_shift : float
         Expected difference between G1/G2 and S phases in logEdU space
-    low_edu_peaks: 1d array
+    low_edu_peaks : 1d array
        peaks found within the range of EdU intensities below edu_g1_ma
-    log_dna: 1d array
+    log_dna : 1d array
         log DNA content across all cells in a well
-    dna_g1_loc: float
+    dna_g1_loc : float
         position of G1 peak in log DNA space
-    nsmooth: int
+    nsmooth : int
          smoothing parameter
+
     Returns
     -------
-    edu_peaks: list of floats
+    edu_peaks : list of floats
            [low_edu_peaks, high_edu_peaks] where -
            low_edu_peaks correspond to peak found within the range of
                            EdU intensities below edu_g1_max
            high_edu_peaks correspond to peak found within the range of
                            EdU intensities above edu_shift values
-    edu_cutoff: float
+    edu_cutoff : float
 
-    edu_lims: list of floats
+    edu_lims : list of floats
            EdU limits to define range of EdU
-    edu_gate: float
+    edu_gate : float
           gating between G1/G2 and S phase based on EdU content
     """
     high_edu_bool = ((log_dna > dna_g1_loc - np.log10(2)/2) &
@@ -669,26 +692,28 @@ def get_s_phase_dna_loc(log_dna, x_dna,
                         dna_g1_loc,
                         log_edu, edu_cutoff,
                         nsmooth=5, ax=None):
-    """ Finds S phase peak location based on DNA content
+    """Finds S phase peak location based on DNA content
+
     Parameters
     ----------
-    log_dna: 1d array
+    log_dna : 1d array
         log DNA content across all cells in a well
-    x_dna: 1d array
+    x_dna : 1d array
          uniformly spaced grid based expected DNA content
-    dna_g1_loc: float
+    dna_g1_loc : float
         position of G1 peak in log DNA space
-    log_edu: 1d array
+    log_edu : 1d array
         log EdU intensities across all cells in a well
-    edu_cutoff: int
+    edu_cutoff : int
 
-    nsmooth: int
+    nsmooth : int
        smoothing parameter
-    ax: subplot object
+    ax : subplot object
        provides subplot with position reference for summary master plot
+
     Returns
     -------
-    dna_s_loc: numpy float
+    dna_s_loc : numpy float
        position of S phase peak in log DNA space
     """
 
@@ -715,26 +740,28 @@ def get_s_phase_dna_loc(log_dna, x_dna,
 def get_g2_dna_loc(log_dna, x_dna, log_edu, edu_cutoff,
                    dna_g1_loc,
                    phase_candidates, nsmooth, ax):
-    """ Finds S phase peak location based on DNA content
+    """Finds S phase peak location based on DNA content
+    
     Parameters
     ----------
-    log_dna: 1d array
+    log_dna : 1d array
         log DNA content across all cells in a well
-    x_dna: 1d array
+    x_dna : 1d array
         uniformly spaced grid based expected DNA content
-    edu_cutoff: numpy float
+    edu_cutoff : numpy float
 
-    dna_g1_loc: float
+    dna_g1_loc : float
         position of G1 peak in log DNA space
-    phase_candidates: ndarray
+    phase_candidates : ndarray
         3-by-n array comprising n candidates for G1, S, and G2 peaks
-    nsmooth: int
+    nsmooth : int
        smoothing parameter
-    ax: subplot object
+    ax : subplot object
        provides subplot with position reference for summary master plot
+    
     Returns
     -------
-    dna_g2_loc: numpy float
+    dna_g2_loc : numpy float
        position of G2 phase peak in log DNA space
     """
     high_dna_bool = ((log_dna > dna_g1_loc + 0.4 * np.log10(2)) &
@@ -770,33 +797,34 @@ def get_g2_dna_loc(log_dna, x_dna, log_edu, edu_cutoff,
 def get_dna_cutoff(log_dna, x_dna, log_edu, edu_cutoff,
                    dna_g1_loc, dna_s_loc,
                    phase_candidates, nsmooth, ax):
-    """ Get DNA cutoff and return G2 peak location based on DNA cutoff
+    """Get DNA cutoff and return G2 peak location based on DNA cutoff
+    
     Parameters
     ----------
-    log_dna: 1d array
+    log_dna : 1d array
         log DNA content across all cells in a well
-    x_dna: 1d array
+    x_dna : 1d array
          uniformly spaced grid based expected DNA content
-    log_edu: 1d array
+    log_edu : 1d array
         log EdU intensities across all cells in a well
-    edu_cutoff: numpy float
+    edu_cutoff : numpy float
 
-    dna_g1_loc: float
+    dna_g1_loc : float
         position of G1 peak in log DNA space
-    dna_s_loc: float
+    dna_s_loc : float
         position of S peak in log DNA space
-    phase_candidates: ndarray
+    phase_candidates : ndarray
         3-by-n array comprising n candidates for G1, S and G2 peaks
-    nsmooth: int
+    nsmooth : int
        smoothing parameter
-    ax: subplot object
+    ax : subplot object
        provides subplot with position reference for summary master plot
 
     Returns
     -------
-    dna_cutoff: numpy float
+    dna_cutoff : numpy float
 
-    dna_g2_loc: numpy float
+    dna_g2_loc : numpy float
           position of G2 phase peak in log DNA space
     """
     high_dna_bool = ((log_dna > dna_g1_loc + 0.4 * np.log10(2)) &
@@ -847,28 +875,29 @@ def get_normal_dist(data):
 # ------------------------------
 def get_dna_gates(log_dna, x_dna, dna_g1_loc, dna_g2_loc, dna_cutoff,
                   log_edu, edu_cutoff):
-    """ computes inner and outer gates based on DNA content
+    """Computes inner and outer gates based on DNA content
+    
     Parameters
     ----------
-    log_dna: 1d array
+    log_dna : 1d array
         log DNA content across all cells in a well
-    x_dna: 1d array
+    x_dna : 1d array
          uniformly spaced grid based expected DNA content
-    dna_g1_loc: float
+    dna_g1_loc : float
         position of G1 peak in log DNA space
-    dna_g2_loc: float
+    dna_g2_loc : float
         position of G2 peak in log DNA space
-    dna_cutoff: numpy float
+    dna_cutoff : numpy float
 
-    log_edu: 1d array
+    log_edu : 1d array
         log EdU intensities across all cells in a well
-    edu_cutoff: numpy float
+    edu_cutoff : numpy float
 
     Returns
     -------
-    dna_gates: list of floats
+    dna_gates : list of floats
         inner and outer gates defined by DNA content
-    dna_lims: list of float
+    dna_lims : list of float
         limits of DNA content for setting plot x_lims
 
     """
@@ -924,35 +953,37 @@ def get_dna_gates(log_dna, x_dna, dna_g1_loc, dna_g2_loc, dna_cutoff,
 def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna, dna_peaks,
                               log_edu, edu_gates, px_edu, edu_peaks,
                               nsmooth=5, ax=None):
-    """ evaluates cell cycle phase of each cell based on gatings
+    """Evaluates cell cycle phase of each cell based on gatings
+
     Parameters
     ----------
-    log_dna: 1d array
+    log_dna : 1d array
         log DNA content across all cells in a well
-    dna_gates: list of floats
+    dna_gates : list of floats
         inner and outer gates defined by DNA content
-    x_dna: 1d array
+    x_dna : 1d array
         uniformly spaced grid based on expected DNA content
-    dna_peaks: list of floats
+    dna_peaks : list of floats
         G1, S and G2 peak locations
-    log_edu: 1d array
+    log_edu : 1d array
         log EdU intensities across all cells in a well
-    edu_gates: list of floats
+    edu_gates : list of floats
         location of gates seperating S and G1/G2 based on EdU intensities
-    px_edu: 1d array
+    px_edu : 1d array
         uniformly spaced grid based on expected EdU intensities
-    edu_peaks: list of floats
+    edu_peaks : list of floats
         location of high and low edu peaks
-    nsmooth: int
+    nsmooth : int
         smoothing parameter
-    ax: subplot object
+    ax : subplot object
         provides positional reference for subplot in master summary plot
+    
     Returns
     -------
-    fractions: dict
+    fractions : dict
         dictionary where keys are cell cycle phases and
         values are fractions of cells in each phase
-    cell_id: 1d array
+    cell_id : 1d array
         membership of each cell in cell cycle phase (1=G1, 2=S, 3=G2)
     """
     cell_id = (1 * ((log_dna > dna_gates[0]) &  # G1
@@ -999,33 +1030,35 @@ def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna, dna_peaks,
 
 def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
                  title=None, plot='all', plot_num=None):
-    """ summary plots depicting kernel density estimates for EdU and DNA,
+    """Summary plots depicting kernel density estimates for EdU and DNA,
     phase candidates and cell cycle fractions
+    
     Parameters
     ----------
-    dna: 1d array
+    dna : 1d array
        DNA content across all cells in a well
-    edu: 1d array
+    edu : 1d array
        EdU intensities across all cells in a well
-    fig: figure object
-    x_dna: 1d array
+    fig : figure object
+    x_dna : 1d array
        uniformly spaced grid based on expected DNA content
-    px_edu: 1d array
+    px_edu : 1d array
        uniformly spaced grid based on expected EdU intensities
-    title: str
+    title : str
       plot title
-    plot: str
+    plot : str
        'all' if all summary plots are to be plotted,
        'scatter' to generate only scatrer plot
-    plot_num: int
+    plot_num : int
         the number which provides positional reference to place
         the subplot in larger plot
+
     Returns
     -------
-    fractions: dict
+    fractions : dict
         dictionary where keys are cell cycle phases and
         values are fractions of cells in each phase
-    cell_id: 1d array
+    cell_id : 1d array
         membership of each cell in cell cycle phase (1=G1, 2=S, 3=G2)
     """
     if plot == 'all':

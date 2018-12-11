@@ -13,17 +13,19 @@ matplotlib.rcParams['ps.fonttype'] = 42
 
 
 def get_ldrgates(ldrtxt, x_ldr=None):
-    """ Gating based on ldr intensities
+    """Gating based on ldr intensities
+
     Parameters
     ----------
-    ldrtxt: 1d array
+    ldrtxt : 1d array
         ldr txt feature across all cells in a well
-    x_ldr: 1d array
+    x_ldr : 1d array
         uniformly distributed 1d grid based on expected
         range of ldr txt
+
     Returns
     -------
-    ldr_gates: list of floats
+    ldr_gates : list of floats
        gating based on minima of kernel density estimate of ldr txt
     """
     if x_ldr is None:
@@ -56,17 +58,19 @@ def get_ldrgates(ldrtxt, x_ldr=None):
 
 
 def get_ldrlims(ldrtxt, x_ldr=None):
-    """ limits of ldr txt feature that define x_lims for plots
+    """Limits of ldr txt feature that define x_lims for plots
+
     Parameters
     ----------
-    ldrtxt: 1d array
+    ldrtxt : 1d array
         ldr txt feature across all cells in a well
-    x_ldr: 1d array
+    x_ldr : 1d array
         uniformly distributed 1d grid based on expected
         range of ldr txt
+
     Returns
     -------
-    ldr_lims: list of floats
+    ldr_lims : list of floats
         limits of ldr txt feature that define x_lims for plots
     """
     if x_ldr is None:
@@ -79,20 +83,22 @@ def get_ldrlims(ldrtxt, x_ldr=None):
 
 def plot_ldr_gating(ldrtxt, x_ldr=None, ldr_gates=None,
                     ldr_lims=None, ax=None):
-    """ Summary plot of gating based on gating based on LDR intensities
+    """Summary plot of gating based on gating based on LDR intensities
+
     Parameters
     ----------
-    ldrtxt: 1d array
+    ldrtxt : 1d array
        ldr txt feature across all cells in a well
-    x_ldr: 1d array
+    x_ldr : 1d array
        uniformly distributed 1d grid based on expected
        range of ldr txt
-    ldr_gates: list of floats
+    ldr_gates : list of floats
        min and max gating based on ldr txt
-    ldr_lims: list of floats
+    ldr_lims : list of floats
        outer bouns of ldr txt to set as x_lim for pltos
-    ax: plot obj
+    ax : plot obj
        provides positional reference for master plot
+
     Returns
     -------
     """
@@ -124,16 +130,18 @@ def plot_ldr_gating(ldrtxt, x_ldr=None, ldr_gates=None,
 
 
 def compute_log_dna(dna, x_dna=None):
-    """ computes log of DNA content bounded by x_dna[2], x_dna[-3]
+    """Computes log of DNA content bounded by x_dna[2], x_dna[-3]
+
     Parameters
     ----------
-    dna: 1D array
+    dna : 1D array
         DNA content of cells in a given well
-    x_dna: 1D array
+    x_dna : 1D array
         Expected distribution of DNA content (used as x-axis grid)
+
     Return
     ------
-    log_dna: 1D array
+    log_dna : 1D array
         log transformed DNA content
     """
     if x_dna is None:
@@ -149,19 +157,21 @@ def compute_log_dna(dna, x_dna=None):
 
 
 def get_g1_location(log_dna, x_dna, ldrtxt, ldr_gates):
-    """ computes  ocation of G1 based on DNA content
+    """Computes  ocation of G1 based on DNA content
+
     Parameters
     ----------
-    log_dna: 1d array
+    log_dna : 1d array
        log DNA content of cells in a given well
-    x_dna: 1d array
+    x_dna : 1d array
        Expected distribution of DNA content (used as x-axis grid)
-    ldrtxt: 1d array
+    ldrtxt : 1d array
         ldr txt feature across all cells in a well
-    ldr_gates: list of floats
+    ldr_gates : list of floats
+
     Returns
     -------
-    g1_loc: float
+    g1_loc : float
        G1 location on log DNA axis
     """
     if x_dna is None:
@@ -188,21 +198,23 @@ def get_g1_location(log_dna, x_dna, ldrtxt, ldr_gates):
 
 
 def get_g2_location(log_dna, x_dna, ldrtxt, ldr_gates, g1_loc):
-    """ computes location of G2 based on DNA content
+    """Computes location of G2 based on DNA content
+
     Parameters
     ----------
-    log_dna: 1d array
+    log_dna : 1d array
        log DNA content of cells in a given well
-    x_dna: 1d array
+    x_dna : 1d array
        Expected distribution of DNA content (used as x-axis grid)
-    ldrtxt: 1d array
+    ldrtxt : 1d array
         ldr txt feature across all cells in a well
-    ldr_gates: list of floats
-    g1_loc: numpy float
+    ldr_gates : list of floats
+    g1_loc : numpy float
         G1 location on log DNA scale
+
     Returns
     -------
-    g2_loc: numpy float
+    g2_loc : numpy float
         G2 location on log DNA scale
     """
     # Get G2 peak and location
@@ -231,20 +243,22 @@ def get_g2_location(log_dna, x_dna, ldrtxt, ldr_gates, g1_loc):
 
 
 def get_g1_g2_position(log_dna, x_dna, ldrtxt, ldr_gates):
-    """ wrapper function that returns G1 and G2 location
+    """Wrapper function that returns G1 and G2 location
     based on log DNA content
+
     Parameters
     ----------
-    log_dna: 1d array
+    log_dna : 1d array
        log DNA content of cells in a given well
-    x_dna: 1d array
+    x_dna : 1d array
        Expected distribution of DNA content (used as x-axis grid)
-    ldrtxt: 1d array
+    ldrtxt : 1d array
         ldr txt feature across all cells in a well
-    ldr_gates: list of floats
+    ldr_gates : list of floats
+
     Returns
     -------
-    g1_g2_pos: list of floats
+    g1_g2_pos : list of floats
         G1 and G2 location on log DNA scale
     """
     if x_dna is None:
@@ -257,15 +271,17 @@ def get_g1_g2_position(log_dna, x_dna, ldrtxt, ldr_gates):
 
 def get_dnalims(log_dna, x_dna=None):
     """ Outer bounds on DNA content to use as x_lim for plots
+
     Parameters
     ----------
-    log_dna: 1d array
+    log_dna : 1d array
         log DNA content of cells in a given well
-    x_dna: 1d array
+    x_dna : 1d array
         Expected distribution of DNA content (used as x-axis grid)
+
     Returns
     -------
-    dna_lims: list of floats
+    dna_lims : list of floats
     """
     if x_dna is None:
         x_dna = np.arange(2.5, 8, 0.02)
@@ -275,21 +291,23 @@ def get_dnalims(log_dna, x_dna=None):
 
 
 def get_dna_gating(dna, ldrtxt, ldr_gates, x_dna=None, ax=None):
-    """ Computes gating to claissfy live/dead cells based on DNA content
+    """Computes gating to claissfy live/dead cells based on DNA content
+    
     Parameters
     ----------
-    dna: 1d array
+    dna : 1d array
          DNA content of cells in a given well
-    ldrtxt: 1d array
+    ldrtxt : 1d array
         ldr txt feature across all cells in a well
-    ldr_gates: list of floats
-    x_dna: 1d array
+    ldr_gates : list of floats
+    x_dna : 1d array
         Expected distribution of DNA content (used as x-axis grid)
-    ax: subplot object
+    ax : subplot object
         provides positional reference for master plot
+
     Returns
     -------
-    dna_gates: list of floats
+    dna_gates : list of floats
         inner and outer gates to classify live/dead cells
     """
     if x_dna is None:
@@ -335,20 +353,22 @@ def get_dna_gating(dna, ldrtxt, ldr_gates, x_dna=None, ax=None):
 
 
 def plot_ldr_dna_scatter(dna, ldrtxt, x_dna=None, x_ldr=None, ax=None):
-    """ Plot of LDR and DNA scatter with associated gates
+    """Plot of LDR and DNA scatter with associated gates
+    
     Parameters
     ----------
-    dna: 1d array
+    dna : 1d array
         DNA content of cells in a given well
-    ldrtxt: 1d array
+    ldrtxt : 1d array
         ldr txt feature across all cells in a well
-    x_dna: 1d array
+    x_dna : 1d array
         Expected distribution of DNA content (used as x-axis grid)
-    x_ldr: 1d array
+    x_ldr : 1d array
         uniformly distributed 1d grid based on expected
         range of ldr txt
-    ax: subplot object
+    ax : subplot object
         provides positional reference for master plot
+    
     Returns
     -------
     """
@@ -397,7 +417,7 @@ def plot_ldr_dna_scatter(dna, ldrtxt, x_dna=None, x_ldr=None, ax=None):
 def live_dead(ldrtxt, ldr_gates,
               dna=None, dna_gates=None,
               x_ldr=None, x_dna=None, ax=None):
-    """ assign classification to individual cells as live/dead based on
+    """Assign classification to individual cells as live/dead based on
     ldrtxt and DNA content.
     If ax is not None, plots pie chart of fraction live/dead
     1. alive = selected+others, where selected is within
@@ -407,25 +427,26 @@ def live_dead(ldrtxt, ldr_gates,
 
     Parameters
     ----------
-    ldrtxt: 1d array
+    ldrtxt : 1d array
        ldr txt feature across all cells in a well
-    ldr_gates: list of floats
-    dna: 1d array
+    ldr_gates : list of floats
+    dna : 1d array
        DNA content of cells in a given well
-    dna_gates: list of floats
-    x_ldr: 1d array
+    dna_gates : list of floats
+    x_ldr : 1d array
        uniformly distributed 1d grid based on expected
         range of ldr txt
-    x_dna: 1d array
+    x_dna : 1d array
        Expected distribution of DNA content (used as x-axis grid)
-    ax: subplot object
+    ax : subplot object
+
     Returns
     -------
-    alive: int
+    alive : int
        number of cells classied as alive
-    dead: int
+    dead : int
        numer of cells classified as dead
-    outcome: 1d array
+    outcome : 1d array
        classification of each cell as live(>=0) or dead (-1).
        should have same length as ldrtxt
     """
@@ -469,17 +490,19 @@ def live_dead(ldrtxt, ldr_gates,
 
 
 def plot_summary(ldr, dna, well=None):
-    """ master summary plot which incorporates above plots as subplots
+    """Master summary plot which incorporates above plots as subplots
+    
     Parameters
     ----------
-    ldr: 1d array
+    ldr : 1d array
        ldr txt feature across all cells in a well
-    dna: 1d array
+    dna : 1d array
        DNA content of cells in a given well
-    well: str
+    well : str
+
     Returns
     -------
-    fig: matplotlib figure object
+    fig : matplotlib figure object
     """
     fig = plt.figure()
     gridspec.GridSpec(2, 2)

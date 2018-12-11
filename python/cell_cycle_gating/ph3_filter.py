@@ -12,16 +12,18 @@ matplotlib.rcParams['ps.fonttype'] = 42
 
 
 def compute_log_ph3(ph3, x_ph3=None):
-    """ Compute log of pH3 intensities
+    """Compute log of pH3 intensities
+
     Parameter
     ---------
-    ph3: 1d array
+    ph3 : 1d array
        ph3 intensities across all cells in a well
-    x_ph3: 1d array
+    x_ph3 : 1d array
        uniformly distributed 1d grid based on expected range of pH3 intensities
+    
     Returns
     -------
-    log_ph3: 1d array
+    log_ph3 : 1d array
        log pf pH3 intensities across all cells in a well
     """
     if x_ph3 is None:
@@ -37,24 +39,26 @@ def compute_log_ph3(ph3, x_ph3=None):
 
 
 def get_ph3_gates(ph3, cell_identity, x_ph3=None, ph3_cutoff=None):
-    """ gating based on pH3 intensities
+    """Gating based on pH3 intensities
+    
     Parameter
     ---------
-    ph3: 1d array
+    ph3 : 1d array
        ph3 intensities across all cells in a well
-    cell_identitity: 1d array
+    cell_identitity : 1d array
        membership of each cell in cell cycle phase (1=G1, 2=S, 3=G2)
-    x_ph3: 1d array
+    x_ph3 : 1d array
        uniformly distributed 1d grid based on expected range of pH3 intensities
-    ph3_cutoff: numpy float
-       (optional) USER defined pH3 gating
+    ph3_cutoff : Optional[numpy float]
+       User defined pH3 gating
+    
     Returns
     -------
-    f_ph3: 1d array
+    f_ph3 : 1d array
        kernel density estimate of pH3 distribution
-    ph3_cutoff: numpy float
+    ph3_cutoff : numpy float
        pH3 gating on kernel density minima
-    ph3_lims: list of floats
+    ph3_lims : list of floats
        bounds on pH3 intensities used as x_lim for plots
     """
     if x_ph3 is None:
@@ -110,20 +114,22 @@ def get_ph3_gates(ph3, cell_identity, x_ph3=None, ph3_cutoff=None):
 
 
 def evaluate_Mphase(log_ph3, ph3_cutoff, cell_identity, ax=None):
-    """ Reassigns membership of each cell based on M phase identified by pH3
+    """Reassigns membership of each cell based on M phase identified by pH3
+
     Parameters
     ----------
-    log_ph3: 1d array
+    log_ph3 : 1d array
         log of ph3 intensities across all cells in a well
-    ph3_cutoff: 1d array
+    ph3_cutoff : 1d array
         pH3 gating on kernel density minima
-    cell_identity: 1d array
+    cell_identity : 1d array
         membership of each cell in cell cycle phase (1=G1, 2=S, 3=G2)
-    ax: subplot object
+    ax : subplot object
         relative positional reference of subplot in master summary plot
+
     Returns
     -------
-    fractions: dict
+    fractions : dict
        keys are cell cycle phases (G1, G2, S, M) and
        values are fractions of cells in each phase
     """
@@ -142,22 +148,24 @@ def evaluate_Mphase(log_ph3, ph3_cutoff, cell_identity, ax=None):
 
 
 def plot_summary(ph3, cell_identity, x_ph3=None, ph3_cutoff=None, well=None):
-    """ Summary plot of pH3 based gating
+    """Summary plot of pH3 based gating
+
     Parameters
     ----------
-    ph3: 1d array
+    ph3 : 1d array
         ph3 intensities across all cells in a well
-    cell_identity: 1d array
+    cell_identity : 1d array
         membership of each cell in cell cycle phase (1=G1, 2=S, 3=G2)
-    x_ph3: 1d array
+    x_ph3 : 1d array
        uniformly distributed 1d grid based on expected range of pH3 intensities
-    ph3_cutoff: 1d array
+    ph3_cutoff : 1d array
         (optional) USER defined pH3 gating
     well: str
         name of well on 96/384 well plate
+
     Returns
     -------
-    fractions: dict
+    fractions : dict
        keys are cell cycle phases (G1, G2, S, M) and
        values are fractions of cells in each phase
     """
