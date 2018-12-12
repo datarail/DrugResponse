@@ -16,17 +16,24 @@ def plot_stacked_bar(data, ax=None,
                      title=None,
                      show_legend=True,
                      **kwargs):
-    '''
-    Make stacked barplot. Figure is saved to the current working folder.
+    """Make stacked barplot. Figure is saved to the current working folder.
+
     Parameters
-    ========
-    data: pd.DataFrame, report dataframe from the 'run_cell_cycle_gating' function
-    ax: matplotlib.pyplot.Axes object, the axes to plot onto.
-    data_cols, list of str, columns to be plotted. By default it is ['G1', 'S', 'G2', 'S_dropout', 'other', 'M'].
-    condition_cols: list or str, columns names to group the data, by default it is ['agent', 'cell_line', 'well'].
-    figname: str, output figure name, if None, no figure will be saved.
-    stacked: bool, weather to plot stacked bars.
-    '''
+    --------
+    data: pd.DataFrame
+        report dataframe from the 'run_cell_cycle_gating' function
+    ax: matplotlib.pyplot.Axes
+        the axes to plot onto.
+    data_cols, list of str
+        columns to be plotted. By default it is ['G1', 'S', 'G2', 'S_dropout', 'other', 'M'].
+    condition_cols: list or str
+        columns names to group the data, by default it is ['agent', 'cell_line', 'well'].
+    figname: str
+        output figure name, if None, no figure will be saved.
+    stacked: bool
+        weather to plot stacked bars.
+
+    """
     ax = ax or plt.gca()
     if isinstance(condition_cols, str):
         data.set_index(condition_cols, inplace=True)
@@ -59,16 +66,21 @@ def batch_stacked_bar_plot(data,
                            stacked=True,
                            savefig=False,
                            **kwargs):
-    '''
-    Make panels of stacked bars.
+    """Make panels of stacked bars.
+
     Parameters
-    ========
-    data: pd.DataFrame, report dataframe from the 'run_cell_cycle_gating' function
-    row_by, col_by: str, column names in the input data that separate subplots in rows and cols.
-    plot_x_col: str, column name in the input data that set the x-axis.
-    data_cols, list of str, columns to be plotted. By default it is ['G1', 'S', 'G2', 'S_dropout', 'other', 'M'].
-    condition_cols: list or str, columns names to group the data, by default it is ['agent', 'cell_line', 'well'].
-    '''
+    --------
+    data: pd.DataFrame
+        report dataframe from the 'run_cell_cycle_gating' function.
+    row_by, col_by: str
+        column names in the input data that separate subplots in rows and cols.
+    plot_x_col: str
+        column name in the input data that set the x-axis.
+    data_cols: list of str
+        columns to be plotted. By default it is ['G1', 'S', 'G2', 'S_dropout', 'other', 'M'].
+    condition_cols: list or str
+        columns names to group the data, by default it is ['agent', 'cell_line', 'well'].
+    """
 
     data.sort_values([row_by, col_by, plot_x_col], inplace=True)
     nrows = data[row_by].unique().shape[0]
@@ -109,22 +121,24 @@ def batch_stacked_bar_plot(data,
     else:
         plt.show()
     plt.close()
-    return
 
 
 def stacked_hist3d(data, title=None, figname=None, alpha=0.3, bins=50):
-    '''
-    Make stacked histogram plots, each column is plotted as a series.
+    """Make stacked histogram plots, each column is plotted as a series.
+
     Parameters
-    ========
-    title, figname: str, name for title or figure, if None, no title/figure were included/saved.
-    alpha: float, transparency of each histogram.
+    --------
+    title, figname: str
+        name for title or figure, if None, no title/figure were included/saved.
+    alpha: float
+        transparency of each histogram.
 
     Returns
-    ========
-    fig:, matplotlib.pyplot.figure, the figure object.
+    --------
+    fig:, matplotlib.pyplot.figure
+        the figure object.
 
-    '''
+    """
     colors = sns.color_palette("husl", data.shape[1])
     if data.shape[1] * 2 < 8:
         figsize = (8, 8)
@@ -170,24 +184,28 @@ def stacked_hist3d(data, title=None, figname=None, alpha=0.3, bins=50):
 
 def data_processing_stacked_hist3d(metadata, datapath, agents=[], doses=[], cells=[], pool_same_condition=True, plate_col='plate',
                                    well_col='well', drug_col='agent', dose_col='concentration', barcode_col='barcode', cell_col='cell_line'):
-    '''
-    Data processing function for extracting data from the raw data folder. Where the root contains metadata of the experiment and each 
+    """Data processing function for extracting data from the raw data folder. Where the root contains metadata of the experiment and each 
     sub folder has well level data. Drugs, doses and cells parameters are used to specify the conditions, or left blank so that the user
     can enter these later with a interactive prompt.
 
     Parameters
-    ========
-    metadata: pandas.DataFrame, the metadata table in the root folder. Containing metadata specifying treament information.
-    datapath: str or os.path object, path to the root of raw data directory.
-    agents, doses, cells: list of strings, specify drug/dose/cell values to be extracted from raw data.
-    pool_same_condition: bool, determines if wells of the same condition are pooled or treated separately.
-    (matadata)_col: str, column names in the metadata table. If for any reason the metadata format are changed, these parameters 
-    can partially accomodate it.
+    --------
+    metadata: pandas.DataFrame
+        the metadata table in the root folder. Containing metadata specifying treament information.
+    datapath: str or os.path object
+        path to the root of raw data directory.
+    agents, doses, cells: list of strings
+        specify drug/dose/cell values to be extracted from raw data.
+    pool_same_condition: bool
+        determines if wells of the same condition are pooled or treated separately.
+    (metadata)_col: str
+        column names in the metadata table. If for any reason the metadata format are changed, these parameters can partially accomodate it.
 
     Returns
-    ========
-    processed_data: pandas.DataFrame, a table that can be readily used in the stacked_hist3d function, each column is a series.
-    '''
+    --------
+    processed_data: pandas.DataFrame
+        a table that can be readily used in the stacked_hist3d function, each column is a series.
+    """
     # Filtering based on metadata.
     processed_data = pd.DataFrame()
     for cond, cond_col in zip([agents, doses, cells], [drug_col, dose_col, cell_col]):
