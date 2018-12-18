@@ -73,7 +73,12 @@ Automated gating does not always work well, in which case you can apply the auto
 
    dfs, dfg = rccg.run(obj, ndict, dfm,
                        control_based_gating=True)
-   dfs2 = rccg.run(obj, ndict, dfm, control_gates=dfg)		       
+   dfs2 = rccg.run(obj, ndict, dfm, control_gates=dfg)
+
+If you want to manually adjust gates across all wells, you can provide a list of fudge factors `i.e.` by what magnitude and in which direction you want to change the DNA gates. There are 4 gates you can adjust; G1-left, G1-right, G2-left, and G2-right. For instance, if you want to move G2-left (3rd gate) furrther left by a magnitude of 0.05, set ``fudge_factor=[0, 0, -0.05, 0]``. If you want to move G2-right (4th gate) by a magnitue of 0.2 to the right, set ``fudge_factor=[0, 0, 0, 0.2]``. In the code example below, we have applied gates from the control but also decided to move the 3rd and 4th gates to the left by 0.05 and 0.1 units in log(DNA) scale.
+
+::
+   dfs2 = rccg.run(obj, ndict, dfm, control_gates=dfg, fudge_factor=[0, 0, -0.05, -0.1])
 		  
 
 		  
@@ -81,16 +86,16 @@ Additional plotting functions
 -----------------------------
 By default, the script outputs individual scatter plots for each well in a plate.
 
- - To plot DNA content distributions:
-::
+.. - To plot DNA content distributions:
+..::
+..
+..  import pandas as pd
+..   from cell_cycle_gating import plot_dna_distributions
 
-   import pandas as pd
-   from cell_cycle_gating import plot_dna_distributions
+..   dfm = pd.read_csv('metadata.csv')
+..   obj = 'abcdef[123]'
 
-   dfm = pd.read_csv('metadata.csv')
-   obj = 'abcdef[123]'
-
-   plot_dna_distributions(obj, dfm)
+..   plot_dna_distributions(obj, dfm)
 
 - To plot cell cycle fractions:
 ::
