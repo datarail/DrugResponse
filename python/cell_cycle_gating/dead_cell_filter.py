@@ -54,7 +54,7 @@ def get_ldrgates(ldrtxt, x_ldr=None):
     ldr_cutoff = x_ldr[np.min([cutoff_index_1, int(cutoff_index_2)])]
 
     ldr_gates = [-np.inf, ldr_cutoff]
-    return ldr_gates
+    return np.array(ldr_gates)
 
 
 def get_ldrlims(ldrtxt, x_ldr=None):
@@ -349,7 +349,7 @@ def get_dna_gating(dna, ldrtxt, ldr_gates, x_dna=None, ax=None):
         ax.set_xlabel('log10 (DNA content)')
         ax.set_ylabel('kernel density estimate')
         ax.set_xlim(dna_lims)
-    return dna_gates
+    return np.array(dna_gates)
 
 
 def plot_ldr_dna_scatter(dna, ldrtxt, x_dna=None, x_ldr=None, ax=None):
