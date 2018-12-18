@@ -1035,7 +1035,8 @@ def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna, dna_peaks,
 
 def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
                  title=None, plot='all', plot_num=None,
-                 control_dna_gates=None, control_edu_gates=None):
+                 control_dna_gates=None, control_edu_gates=None,
+                 fudge_gates=np.array([0, 0, 0, 0])):
     """Summary plots depicting kernel density estimates for EdU and DNA,
     phase candidates and cell cycle fractions
     
@@ -1139,6 +1140,8 @@ def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
         dna_gl = list(dna_lims) + [g-0.1 for g in dna_gates]
         dna_gl2 = list(dna_lims) + [g+0.1 for g in dna_gates]
         dna_lims = np.array([np.min(dna_gl), np.max(dna_gl2)])
+    
+    dna_gates += fudge_gates
     gates['dna_gates'] = dna_gates
     gates['dna_lims'] = dna_lims
     

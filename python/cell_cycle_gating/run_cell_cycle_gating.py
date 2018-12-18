@@ -16,7 +16,7 @@ matplotlib.rcParams['ps.fonttype'] = 42
 def run(object_level_directory, ndict, dfm=None,
         ph3_channel=True, ldr_channel=True,
         px_edu=None, control_based_gating=False,
-        control_gates=None):
+        control_gates=None, fudge_gates=np.array([0, 0, 0, 0])):
     """Executes cell cycle gating on all wells for which object level
     data is available in object_level_directory. Plots and saves summary pdf
     of DNA v EdU distribution with automated gatings. A dataframe summarizing
@@ -106,6 +106,7 @@ def run(object_level_directory, ndict, dfm=None,
                     dna_gates = control_dna_gates
                 else:
                     dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
+                dna_gates += np.array(fudge_gates)
                 a, d, _ = dcf.live_dead(ldr, ldr_gates, dna, dna_gates)
                 
             fractions, cell_identity, gates = cc.plot_summary(dna, edu, fig,
@@ -114,7 +115,8 @@ def run(object_level_directory, ndict, dfm=None,
                                                               plot_num=i,
                                                               px_edu=px_edu,
                                                               control_dna_gates=control_dna_gates,
-                                                              control_edu_gates=control_edu_gates)
+                                                              control_edu_gates=control_edu_gates,
+                                                              fudge_gates=np.array(fudge_gates))
             if dfm is not None:
                 gates['well'] = well
                 gates['cell_line'] = cell_line
