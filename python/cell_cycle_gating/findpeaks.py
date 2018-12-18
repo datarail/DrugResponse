@@ -83,7 +83,7 @@ def get_kde(x, x_grid, bandwidth=None):
     return kde.evaluate(x_grid)
 
 
-def findpeaks(signal, npeaks=None):
+def findpeaks(signal, npeaks=None, thresh=0.25):
     """Returns the amplitude , location and half-prominence width of peaks
     from the input signal
 
@@ -93,6 +93,8 @@ def findpeaks(signal, npeaks=None):
     npeaks : int
          number of peaks, locations and width returned sorted
          from highest to lowes amplitude peaks
+    thresh : Optional[float]
+         threshold below which secondary peaks will not be reported. Default is 0.25
 
     Returns
     --------
@@ -104,7 +106,7 @@ def findpeaks(signal, npeaks=None):
         list of widths at half-prominence
 
     """
-    peak_loc = peakutils.peak.indexes(signal, thres=0.25)
+    peak_loc = peakutils.peak.indexes(signal, thres=thresh)
     peak_amp = [signal[loc] for loc in peak_loc]
     width = []
     for loc, value in zip(peak_loc, peak_amp):
