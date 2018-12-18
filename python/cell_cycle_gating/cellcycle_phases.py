@@ -656,7 +656,7 @@ def get_high_edu_peaks(log_edu, px_edu, edu_shift,
 
         f_edu = get_kde(log_edu, px_edu)
         neg_f_edu = np.array([-x for x in f_edu])
-        _, edu_loc, _ = findpeaks(neg_f_edu.tolist(), thresh=0.1)
+        _, edu_loc, _ = findpeaks(neg_f_edu.tolist(), thresh=0.01)
        
         try:
            edu_cutoff = px_edu[edu_loc[
@@ -664,13 +664,16 @@ def get_high_edu_peaks(log_edu, px_edu, edu_shift,
                              (px_edu[edu_loc] < high_edu_peaks))))[0][0])
            ]]
         except IndexError:
-            smf = smooth.smooth(f_edu.T, nsmooth, 'flat')
-            if len(smf) > len(f_edu):
-               smf = smooth.smooth(f_edu.T, 0.5 * nsmooth, 'flat')
-            edu_cutoff = px_edu[np.argmin(smf.T +
-                                         ((px_edu < low_edu_peaks) |
-                                          (px_edu > high_edu_peaks))
-                                         )]
+            high_edu_peaks = low_edu_peaks + edu_shift
+            edu_cutoff = np.mean((low_edu_peaks, high_edu_peaks))
+            
+            #smf = smooth.smooth(f_edu.T, nsmooth, 'flat')
+            #if len(smf) > len(f_edu):
+            #   smf = smooth.smooth(f_edu.T, 0.5 * nsmooth, 'flat')
+            #edu_cutoff = px_edu[np.argmin(smf.T +
+            #                             ((px_edu < low_edu_peaks) |
+            #                              (px_edu > high_edu_peaks))
+            #                             )]
         edu_lims = [px_edu[2],
                     np.min((2 * high_edu_peaks - edu_cutoff, px_edu[-2]))]
         # dna_s_loc = get_s_phase_dna_peaks(log_dna, x_dna, dna_g1_loc,
@@ -1032,7 +1035,7 @@ def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna, dna_peaks,
 
 def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
                  title=None, plot='all', plot_num=None,
-                 control_gates=None):
+                 control_dna_gates=None, control_edu_gates=None):
     """Summary plots depicting kernel density estimates for EdU and DNA,
     phase candidates and cell cycle fractions
     
@@ -1115,6 +1118,8 @@ def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
                                                                     log_dna,
                                                                     dna_g1_loc,
                                                                     nsmooth=5)
+    if control_edu_gates is not None:
+        edu_gates = control_override(control_edu_gates, edu_gates, 0.2)
     gates['edu_gates'] = edu_gates
     gates['edu_lims'] = edu_lims
 
@@ -1128,8 +1133,12 @@ def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
     dna_gates, dna_lims = get_dna_gates(log_dna, x_dna, dna_g1_loc, dna_g2_loc,
                                         dna_cutoff, log_edu, edu_cutoff)
 
-    if control_gates is not None:
-        dna_gates = control_override(control_gates, dna_gates)
+    if control_dna_gates is not None:
+        dna_gates = control_override(control_dna_gates, dna_gates, 0.1)
+        # Update DNA limits
+        dna_gl = list(dna_lims) + [g-0.1 for g in dna_gates]
+        dna_gl2 = list(dna_lims) + [g+0.1 for g in dna_gates]
+        dna_lims = np.array([np.min(dna_gl), np.max(dna_gl2)])
     gates['dna_gates'] = dna_gates
     gates['dna_lims'] = dna_lims
     
