@@ -80,14 +80,12 @@ If you want to manually adjust gates across all wells, you can provide a list of
 ::
 
    dfs2 = rccg.run(obj, ndict, dfm, control_gates=dfg,
-                   fudge_factor=[0, 0, -0.05, -0.1])
+                   fudge_gates=[0, 0, -0.05, -0.1])
 		  
 
 		  
 Additional plotting functions
 -----------------------------
-By default, the script outputs individual scatter plots for each well in a plate.
-
 .. - To plot DNA content distributions:
 ..
 ..
