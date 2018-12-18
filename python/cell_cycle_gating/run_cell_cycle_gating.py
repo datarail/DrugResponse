@@ -15,7 +15,8 @@ matplotlib.rcParams['ps.fonttype'] = 42
 
 def run(object_level_directory, ndict, dfm=None,
         ph3_channel=True, ldr_channel=True,
-        px_edu=None):
+        px_edu=None, control_based_gating=False,
+        control_gates=None):
     """Executes cell cycle gating on all wells for which object level
     data is available in object_level_directory. Plots and saves summary pdf
     of DNA v EdU distribution with automated gatings. A dataframe summarizing
@@ -39,14 +40,20 @@ def run(object_level_directory, ndict, dfm=None,
     plt.ioff()   
     if dfm is not None:
         dfm_ord = merge_metadata(dfm, object_level_directory)
+        if control_based_gating:
+            dfm_ord = dfm_ord[dfm_ord.agent == 'DMSO'].copy()
         object_level_files = dfm_ord['object_level_file'].tolist()
     else:
         object_level_files = [s for s in os.listdir(object_level_directory)
                               if 'Nuclei Selected[0].txt' in s]
 
     df_summary = pd.DataFrame()
+    df_gates = pd.DataFrame()
     nb_plots = len(object_level_files)
-    pdf_pages = PdfPages('summary_%s.pdf' % object_level_directory)
+    if control_based_gating:
+        pdf_pages = PdfPages('control_summary_%s.pdf' % object_level_directory)
+    else:
+        pdf_pages = PdfPages('summary_%s.pdf' % object_level_directory)
     nb_plots_per_page = 10
     # nb_pages = int(np.ceil(nb_plots / float(nb_plots_per_page)))
     for i, file in enumerate(object_level_files):
@@ -57,9 +64,6 @@ def run(object_level_directory, ndict, dfm=None,
         well = re.search('result.(.*?)\[', file).group(1)
         well = "%s%s" % (well[0], well[1:].zfill(2))
 
-        #edu = np.array(df['Nuclei Selected - EdUINT'].tolist())
-        #dna = np.array(df['Nuclei Selected - DNAcontent'].tolist())
-        #ldr = np.array(df['Nuclei Selected - LDRTXT SER Spot 8 px'].tolist())
         edu = np.array(df['edu'].tolist())
         dna = np.array(df['dna'].tolist())
 
@@ -72,18 +76,10 @@ def run(object_level_directory, ndict, dfm=None,
             ldr = ldr[edu_notnan]     
 
         if ph3_channel:
-            #ph3 = np.array(df['Nuclei Selected - pH3INT'].tolist())
             ph3 = np.array(df['ph3'].tolist())
             ph3 = ph3[edu_notnan]
 
         try:
-            # Get live dead
-            if ldr_channel:
-                ldr_gates = dcf.get_ldrgates(ldr)
-                dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
-                a, d, _ = dcf.live_dead(ldr, ldr_gates, dna, dna_gates)
-                #print(a, d)
-
             # Get phases based on DNA and EdU
             if dfm is not None:
                 # dfm_ord.index = dfm_ord.well
@@ -93,11 +89,30 @@ def run(object_level_directory, ndict, dfm=None,
                 title = "%s %s %s (%s um)" % (well, cell_line, agent, conc)
             else:
                 title = well
-            fractions, cell_identity = cc.plot_summary(dna, edu, fig,
-                                                       title=title,
-                                                       plot='scatter',
-                                                       plot_num=i,
-                                                       px_edu=px_edu)
+            if control_gates is not None:
+               control_dna_gates = control_gates[control_gates.cell_line == cell_line][
+                   'dna_gates'].mean()
+            else:
+                control_dna_gates = None
+
+            # Get live dead
+            if ldr_channel:
+                ldr_gates = dcf.get_ldrgates(ldr)
+                if control_dna_gates is not None:
+                    dna_gates = control_dna_gates
+                else:
+                    dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
+                a, d, _ = dcf.live_dead(ldr, ldr_gates, dna, dna_gates)
+                
+            fractions, cell_identity, gates = cc.plot_summary(dna, edu, fig,
+                                                              title=title,
+                                                              plot='scatter',
+                                                              plot_num=i,
+                                                              px_edu=px_edu,
+                                                              control_gates=control_dna_gates)
+            if dfm is not None:
+                gates['well'] = well
+                gates['cell_line'] = cell_line
 
             # Revise phases based on pH3
             if ph3_channel:
@@ -112,6 +127,8 @@ def run(object_level_directory, ndict, dfm=None,
             fractions['cell_count__total'] = len(dna)
 
             df_summary = df_summary.append(fractions, ignore_index=True)
+            df_gates = df_gates.append(gates, ignore_index=True)
+        
         except ValueError:
             print(well, ' ValueError')
             pass
@@ -152,8 +169,13 @@ def run(object_level_directory, ndict, dfm=None,
     if dfc is not None:
         df_summary.index = df_summary['well'].tolist()
         df_summary = pd.concat([df_summary, dfc], axis=1)
-    df_summary.to_csv('summary_%s.csv' % object_level_directory, index=False)
-    return df_summary
+    if control_based_gating:
+        df_summary = df_summary[df_summary.agent == 'DMSO'].copy()
+        df_summary.to_csv('control_summary_%s.csv' % object_level_directory, index=False)
+        return df_summary, df_gates
+    else:
+        df_summary.to_csv('summary_%s.csv' % object_level_directory, index=False)        
+        return df_summary
 
 
 def merge_metadata(dfm, obj):
@@ -260,3 +282,5 @@ def get_corpse_count(obj):
 def map_channel_names(df, ndict):
     df = df.rename(columns=ndict)
     return df
+
+
