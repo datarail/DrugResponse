@@ -92,8 +92,12 @@ def run(object_level_directory, ndict, dfm=None,
             if control_gates is not None:
                control_dna_gates = control_gates[control_gates.cell_line == cell_line][
                    'dna_gates'].mean()
+               #control_edu_gates = control_gates[control_gates.cell_line == cell_line][
+               #    'edu_gates'].mean()
+               control_edu_gates=None
             else:
                 control_dna_gates = None
+                control_edu_gates = None
 
             # Get live dead
             if ldr_channel:
@@ -109,7 +113,8 @@ def run(object_level_directory, ndict, dfm=None,
                                                               plot='scatter',
                                                               plot_num=i,
                                                               px_edu=px_edu,
-                                                              control_gates=control_dna_gates)
+                                                              control_dna_gates=control_dna_gates,
+                                                              control_edu_gates=control_edu_gates)
             if dfm is not None:
                 gates['well'] = well
                 gates['cell_line'] = cell_line
