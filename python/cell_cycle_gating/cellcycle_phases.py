@@ -655,22 +655,22 @@ def get_high_edu_peaks(log_edu, px_edu, edu_shift,
             high_edu_peaks = low_edu_peaks + edu_shift
 
         f_edu = get_kde(log_edu, px_edu)
-        neg_f_edu = [-x for x in f_edu]
-        _, edu_loc, _ = findpeaks(neg_f_edu)
+        neg_f_edu = np.array([-x for x in f_edu])
+        _, edu_loc, _ = findpeaks(neg_f_edu.tolist(), thresh=0.1)
+       
         try:
-            edu_cutoff = px_edu[edu_loc[
-                ((np.nonzero(((px_edu[edu_loc] > low_edu_peaks) &
-                              (px_edu[edu_loc] < high_edu_peaks))))[0][0])
-            ]]
-        # if not np.any(edu_cutoff):
+           edu_cutoff = px_edu[edu_loc[
+               ((np.nonzero(((px_edu[edu_loc] > low_edu_peaks) &
+                             (px_edu[edu_loc] < high_edu_peaks))))[0][0])
+           ]]
         except IndexError:
             smf = smooth.smooth(f_edu.T, nsmooth, 'flat')
             if len(smf) > len(f_edu):
-                smf = smooth.smooth(f_edu.T, 0.5 * nsmooth, 'flat')
+               smf = smooth.smooth(f_edu.T, 0.5 * nsmooth, 'flat')
             edu_cutoff = px_edu[np.argmin(smf.T +
-                                          ((px_edu < low_edu_peaks) |
-                                           (px_edu > high_edu_peaks))
-                                          )]
+                                         ((px_edu < low_edu_peaks) |
+                                          (px_edu > high_edu_peaks))
+                                         )]
         edu_lims = [px_edu[2],
                     np.min((2 * high_edu_peaks - edu_cutoff, px_edu[-2]))]
         # dna_s_loc = get_s_phase_dna_peaks(log_dna, x_dna, dna_g1_loc,
