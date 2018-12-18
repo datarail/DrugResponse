@@ -683,7 +683,9 @@ def get_high_edu_peaks(log_edu, px_edu, edu_shift,
         # dna_s_loc = dna_g1_loc + 0.5 * np.log10(2)
     edu_gates = [edu_cutoff,
                  high_edu_peaks + np.max((high_edu_peaks-edu_cutoff, 1))]
+    edu_gates = np.array(edu_gates)
     edu_lims[1] = np.max((edu_lims[1], edu_gates[1]+0.1))
+    edu_lims = np.array(edu_lims)
     edu_peaks = [low_edu_peaks, high_edu_peaks]
     return edu_peaks, edu_cutoff, edu_lims, edu_gates
 
@@ -723,9 +725,9 @@ def get_s_phase_dna_loc(log_dna, x_dna,
     if np.any(high_dna_bool):
         ldh = log_dna[high_dna_bool]
         if len(ldh) > 10:
-            f_dna = get_kde(log_dna[high_dna_bool], x_dna, bandwidth=0.0317)
+            f_dna = get_kde(log_dna[high_dna_bool], x_dna) #, bandwidth=0.0317)
             dna_amp, dna_loc, _ = findpeaks(
-                smooth.smooth(f_dna, nsmooth, 'flat').tolist(),
+                smooth.smooth(f_dna, 2 * nsmooth).tolist(),
                 npeaks=1)
             dna_s_loc = x_dna[dna_loc[0]]
             if ax is not None:
@@ -920,8 +922,8 @@ def get_dna_gates(log_dna, x_dna, dna_g1_loc, dna_g2_loc, dna_cutoff,
         norm_fit_g2, mu, std = get_normal_dist(log_dna[hg2])
         g2_min_width = np.max((norm.ppf(0.9, mu, std) - norm.ppf(0.1, mu, std),
                                0.05))
-        g2_lim = np.max((norm.ppf(0.1, mu, std),
-                         dna_cutoff + 0.1 * np.log10(2)))
+        g2_lim = np.max((norm.ppf(0.01, mu, std),
+                         dna_cutoff + 0.01 * np.log10(2)))
     else:
         g2_min_width = 0.05
         g2_lim = np.min((dna_cutoff + 0.1 * np.log10(2),
@@ -945,7 +947,7 @@ def get_dna_gates(log_dna, x_dna, dna_g1_loc, dna_g2_loc, dna_cutoff,
 
     dna_gl = list(dna_lims) + [g-0.1 for g in dna_gates]
     dna_gl2 = list(dna_lims) + [g+0.1 for g in dna_gates]
-    dna_lims = [np.min(dna_gl), np.max(dna_gl2)]
+    dna_lims = np.array([np.min(dna_gl), np.max(dna_gl2)])
 
     return dna_gates, dna_lims
 
@@ -1029,7 +1031,8 @@ def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna, dna_peaks,
 
 
 def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
-                 title=None, plot='all', plot_num=None):
+                 title=None, plot='all', plot_num=None,
+                 control_gates=None):
     """Summary plots depicting kernel density estimates for EdU and DNA,
     phase candidates and cell cycle fractions
     
@@ -1061,6 +1064,7 @@ def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
     cell_id : 1d array
         membership of each cell in cell cycle phase (1=G1, 2=S, 3=G2)
     """
+    gates = {}
     if plot == 'all':
         fig = plt.figure()
         gridspec.GridSpec(2, 3)
@@ -1111,6 +1115,8 @@ def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
                                                                     log_dna,
                                                                     dna_g1_loc,
                                                                     nsmooth=5)
+    gates['edu_gates'] = edu_gates
+    gates['edu_lims'] = edu_lims
 
     dna_s_loc = get_s_phase_dna_loc(log_dna, x_dna, dna_g1_loc,
                                     log_edu, edu_cutoff, ax=ax2)
@@ -1121,6 +1127,12 @@ def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
                                             phase_candidates, 5, ax=ax2)
     dna_gates, dna_lims = get_dna_gates(log_dna, x_dna, dna_g1_loc, dna_g2_loc,
                                         dna_cutoff, log_edu, edu_cutoff)
+
+    if control_gates is not None:
+        dna_gates = control_override(control_gates, dna_gates)
+    gates['dna_gates'] = dna_gates
+    gates['dna_lims'] = dna_lims
+    
     if ax2 is not None:
         ax2.plot([dna_gates[i] for i in [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3]],
                  [np.max(ax2.get_ylim()) * i
@@ -1154,4 +1166,13 @@ def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
         fig.set_size_inches(w=10, h=6)
         if title:
             fig.savefig('cell_cycle_phases_%s.png' % title, dpi=300)
-    return fractions, cell_id
+    return fractions, cell_id, gates
+
+
+
+def control_override(control_gates, gates, error_delta=0.075):
+    error = np.abs(control_gates - gates)
+
+    gates[error >= error_delta] = control_gates[error >= error_delta]
+    return gates
+    
