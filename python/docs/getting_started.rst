@@ -3,7 +3,7 @@ Getting started
 
 .. |dissapointed| replace:: 😞
 
-.. |eyes| replace:: https://www.smileysapp.com/emojis/watching-you.png
+.. |eyes| replace::
 
 
 Quickstart
@@ -64,15 +64,17 @@ By default, the gating code expects that you have all 4 channels `i.e` DNA, EdU,
 		 )
 		
 
-Gating only on controls |dissapointed|
+Gating corrections using control wells
 --------------------------------------
 
-Automated gating does not always work well, in which case you can apply the automated gating from control wells for a given cell line across corresponding treatment wells.
+Automated gating does not always work well, in which case you can apply the automated gating from control wells for a given cell line across corresponding treatment wells. In the first line of code below, by setting ``control_based_gating=True``, automated gating is run only on the control plates. The results are saved in .csv and .pdf files with the prefix ``control_summary_``. The function also returns a second dataframe ``dfg`` that contains information on the gates in the control wells. In the second line, the script is run a second time with the arguement ``control_gates=dfg`` so that errors in automated gating are corrected based on control gating.
 
 ::
 
-   dfs = rccg.run(obj, ndict, dfm,
-                  control_based_gating=True)
+   dfs, dfg = rccg.run(obj, ndict, dfm,
+                       control_based_gating=True)
+   dfs2 = rccg.run(obj, ndict, dfm, control_gates=dfg)		       
+		  
 
 		  
 Additional plotting functions
