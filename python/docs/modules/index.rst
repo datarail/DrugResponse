@@ -49,7 +49,7 @@ Peak identification
     :show-inheritance:
 
 
-PLotting functions
+Plotting functions
 ----------------
 
 .. automodule:: cell_cycle_gating.plotting
