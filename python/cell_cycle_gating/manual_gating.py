@@ -198,9 +198,9 @@ def manual_gating(dfs, obj_file, ndict, ldr_channel=True, ph3_channel=True,
         a, d, _ = dcf.live_dead(ldr, ldr_gates, dna, ndna_gates)    
 
     if ph3_channel:
-        f_ph3, ph3_cutoff, ph3_lims = pf.get_ph3_gates(ph3, cell_identity)
+        f_ph3, ph3_cutoff, ph3_lims = pf.get_ph3_gates(ph3, cell_id)
         log_ph3 = pf.compute_log_ph3(ph3)
-        fractions = pf.evaluate_Mphase(log_ph3, ph3_cutoff, cell_identity)
+        fractions = pf.evaluate_Mphase(log_ph3, ph3_cutoff, cell_id)
 
     if ldr_channel:
         fractions['cell_count'] = a
