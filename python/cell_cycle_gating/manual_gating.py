@@ -211,8 +211,12 @@ def manual_gating(dfs, obj_file, ndict, ldr_channel=True, ph3_channel=True,
     if 'corpse_count' in dfs.columns.tolist():
         fractions['corpse_count'] = dfs[dfs.well == well]['corpse_count'].values[0]
 
-    dfs2 = dfs[dfs.well != well].copy()
-    dfs2 = dfs2.append(fractions, ignore_index=True)
+    #dfs2 = dfs[dfs.well != well].copy()
+    dnew = pd.DataFrame(fractions, index=[well])
+    dfs2 = dfs.copy()
+    dfs2.index = dfs2['well']
+    #dfs2 = dfs2.append(fractions, ignore_index=True)
+    dfs2.update(dnew)
     return dfs2
 
 
