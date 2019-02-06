@@ -209,7 +209,7 @@ def manual_gating(dfs, obj_file, ndict, ldr_channel=True, ph3_channel=True,
     fractions['cell_count__total'] = len(dna)
 
     if 'corpse_count' in dfs.columns.tolist():
-        fractions['corpse_count'] = dfs[dfs.well == 'F09']['corpse_count'].values[0]
+        fractions['corpse_count'] = dfs[dfs.well == well]['corpse_count'].values[0]
 
     dfs2 = dfs[dfs.well != well].copy()
     dfs2 = dfs2.append(fractions, ignore_index=True)
