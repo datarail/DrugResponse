@@ -194,8 +194,8 @@ def manual_gating(dfs, obj_file, ndict, ldr_channel=True, ph3_channel=True,
 
     if ldr_channel:
         ldr_gates = dcf.get_ldrgates(ldr)
-        #dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
-        a, d, _ = dcf.live_dead(ldr, ldr_gates, dna, ndna_gates)    
+        odna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
+        a, d, _ = dcf.live_dead(ldr, ldr_gates, dna, odna_gates)    
 
     if ph3_channel:
         f_ph3, ph3_cutoff, ph3_lims = pf.get_ph3_gates(ph3, cell_id)
