@@ -12,6 +12,7 @@ import re
 from ipywidgets import interactive, interact, fixed, interact_manual
 import ipywidgets as widgets
 from IPython.display import display
+import os
 
 
 def reevaluate_phases(log_dna, dna_gates, log_edu, edu_gates):
@@ -35,10 +36,12 @@ def reevaluate_phases(log_dna, dna_gates, log_edu, edu_gates):
     return fractions, cell_id
 
 
-def update_gating(dfs, obj_file, ndict,
+def update_gating(dfs, obj, well, ndict,
                   ldr_channel=True, ph3_channel=True,
                   x_dna=None, px_edu=None):
-    df = pd.read_table(obj_file)
+    obj_file = get_obj_file(obj, well)
+    path2file = "%s/%s" % (obj, obj_file)
+    df = pd.read_table(path2file)
     df = map_channel_names(df, ndict)
     well = re.search('result.(.*?)\[', obj_file).group(1)
     well = "%s%s" % (well[0], well[1:].zfill(2))
@@ -110,10 +113,12 @@ def gating(log_dna, log_edu,
     plt.show()
     
 
-def apply_gating(y, dfs, obj_file, ndict,
+def apply_gating(y, dfs, obj, well, ndict,
                   ldr_channel=True, ph3_channel=True,
                   x_dna=None, px_edu=None):
-    df = pd.read_table(obj_file)
+    obj_file = get_obj_file(obj, well)
+    path2file = "%s/%s" % (obj, obj_file)
+    df = pd.read_table(path2file)
     df = map_channel_names(df, ndict)
     well = re.search('result.(.*?)\[', obj_file).group(1)
     well = "%s%s" % (well[0], well[1:].zfill(2))
@@ -167,3 +172,13 @@ def apply_gating(y, dfs, obj_file, ndict,
 def map_channel_names(df, ndict):
     df = df.rename(columns=ndict)
     return df
+
+
+def get_obj_file(obj, well):
+    if well[1] == '0':
+        well_name = "%s%s" % (well[0], well[2:])
+    else:
+        well_name = well
+    files = os.listdir(obj)
+    obj_file = [file for file in files if well_name == re.search('result.(.*?)\[', file).group(1)]
+    return obj_file[0]
