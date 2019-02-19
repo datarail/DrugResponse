@@ -489,7 +489,7 @@ def live_dead(ldrtxt, ldr_gates,
     return alive, dead, outcome
 
 
-def plot_summary(ldr, dna, well=None):
+def plot_summary(ldr, dna, x_ldr=None, well=None):
     """Master summary plot which incorporates above plots as subplots
     
     Parameters
@@ -510,10 +510,10 @@ def plot_summary(ldr, dna, well=None):
     ax2 = plt.subplot2grid((2, 2), (0, 1), colspan=1, rowspan=1)
     ax3 = plt.subplot2grid((2, 2), (1, 0), colspan=1, rowspan=1)
     ax4 = plt.subplot2grid((2, 2), (1, 1), colspan=1, rowspan=1)
-    ldr_gates, ldr_lims = plot_ldr_gating(ldr, ax=ax1)
+    ldr_gates, ldr_lims = plot_ldr_gating(ldr, x_ldr=x_ldr, ax=ax1)
     dna_gates = get_dna_gating(dna, ldr, ldr_gates, ax=ax2)
-    plot_ldr_dna_scatter(dna, ldr, ax=ax3)
-    a, d, o = live_dead(ldr, ldr_gates, dna, dna_gates, ax=ax4)
+    plot_ldr_dna_scatter(dna, ldr, x_ldr=x_ldr, ax=ax3)
+    a, d, o = live_dead(ldr, ldr_gates, dna, dna_gates, x_ldr=x_ldr, ax=ax4)
     fig.tight_layout()
     fig.set_size_inches(w=8, h=7)
     if well:
