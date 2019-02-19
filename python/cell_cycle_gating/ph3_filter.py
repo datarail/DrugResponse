@@ -82,7 +82,7 @@ def get_ph3_gates(ph3, cell_identity, x_ph3=None, ph3_cutoff=None):
     # Enforce that no more than 30% of cells are in M-phase
     min_idx = np.nonzero(np.cumsum(f_ph3)/np.sum(f_ph3) > 0.3)[0][0] - 5
     if np.any(peak_loc > min_idx):
-        peak_width = peak_width[np.nonzero(peak_width >= min_idx)[0][0]]
+        peak_width = peak_width[np.nonzero(peak_loc >= min_idx)[0][0]]
         peak_loc = np.max(
             (peak_loc[np.nonzero(peak_loc >= min_idx)[0][0]],
              np.nonzero(np.cumsum(f_ph3)/np.sum(f_ph3) > .3)[0][0])
