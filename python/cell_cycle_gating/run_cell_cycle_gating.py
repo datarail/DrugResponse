@@ -291,3 +291,23 @@ def map_channel_names(df, ndict):
     return df
 
 
+def get_ixmc_barcode(filename):
+    """
+    Parameters
+    ----------
+    filename : str
+      Name of .txt file containing well-level DDD data
+    
+    Returns
+    -------
+    barcode : str
+      Plate barcode 
+    """
+    headers = []
+    f = open(filename)
+    for _ in range(7):
+        headers.append(f.readline())
+    barcode = headers[4].split('=')[1].split('"\n')[0]
+    return barcode
+
+
