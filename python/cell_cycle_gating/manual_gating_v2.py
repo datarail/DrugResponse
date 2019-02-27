@@ -179,8 +179,8 @@ def get_obj_file(obj, well):
         well_name = "%s%s" % (well[0], well[2:])
     else:
         well_name = well
-    files = files = [f for f in os.listdir(obj)
-                     if f.endswith('Nuclei Selected[0].txt')]
+    files = [f for f in os.listdir(obj)
+             if f.endswith('Nuclei Selected[0].txt')]
     obj_file = [file for file in files if well_name ==
                 re.search('result.(.*?)\[', file).group(1)]
     return obj_file[0]
