@@ -28,10 +28,12 @@ def reevaluate_phases(log_dna, dna_gates, log_edu, edu_gates):
                       (log_edu < edu_gates[0])) +
                3 * ((log_dna >= dna_gates[2]) &  # G2
                     (log_dna < dna_gates[3]) &
-                    (log_edu < edu_gates[0])))
+                    (log_edu < edu_gates[0])) +
+               0.5 * (log_dna < dna_gates[0]) +
+               3.1 * (log_dna > dna_gates[3]))
     fractions = {}
-    for state, val in zip(['other', 'G1', 'S', 'S_dropout', 'G2'],
-                          [0, 1, 2, 2.1, 3]):
+    for state, val in zip(['subG1', 'G1', 'S', 'S_dropout', 'G2', 'beyondG2'],
+                          [0.5, 1, 2, 2.1, 3, 3.1]):
         fractions[state] = np.mean(cell_id == (val % 4))
     return fractions, cell_id
 
@@ -155,7 +157,7 @@ def apply_gating(y, dfs, obj, well, ndict,
     if ph3_channel:
         f_ph3, ph3_cutoff, ph3_lims = pf.get_ph3_gates(ph3, cell_id)
         log_ph3 = pf.compute_log_ph3(ph3)
-        fractions = pf.evaluate_Mphase(log_ph3, ph3_cutoff, cell_id)
+        fractions, cell_id = pf.evaluate_Mphase(log_ph3, ph3_cutoff, cell_id)
 
     if 'corpse_count' in dfs.columns.tolist():
         fractions['corpse_count'] = dfs[dfs.well == well]['corpse_count'].values[0]
@@ -166,7 +168,7 @@ def apply_gating(y, dfs, obj, well, ndict,
     dfs2.index = dfs2['well']
     #dfs2 = dfs2.append(fractions, ignore_index=True)
     dfs2.update(dnew)
-    return dfs2
+    return dfs2, fractions, cell_id
 
 
 def map_channel_names(df, ndict):
