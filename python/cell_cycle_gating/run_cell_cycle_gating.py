@@ -48,6 +48,7 @@ def run(object_level_directory, ndict, dfm=None,
                               if 'Nuclei Selected[0].txt' in s]
 
     df_summary = pd.DataFrame()
+    identity_dict = {}
     df_gates = pd.DataFrame()
     nb_plots = len(object_level_files)
     if control_based_gating:
@@ -78,6 +79,15 @@ def run(object_level_directory, ndict, dfm=None,
         if ph3_channel:
             ph3 = np.array(df['ph3'].tolist())
             ph3 = ph3[edu_notnan]
+            
+        # # Code hack for pRb gating
+        # #--------------------------------------------------
+        # px_edu = np.arange(-0.2, 5.3, .02)    
+        # _, offset_edu, *_ =  cc.get_edu_gates(edu)   
+        # log_edu = cc.compute_log_edu(edu, px_edu, offset_edu)
+        # rb_lower = np.percentile(log_edu, 100)
+        # rb_gates = np.array([rb_lower+0.1, rb_lower+1])
+        # #-------------------------------------------------
 
         try:
             # Get phases based on DNA and EdU
@@ -95,9 +105,11 @@ def run(object_level_directory, ndict, dfm=None,
                #control_edu_gates = control_gates[control_gates.cell_line == cell_line][
                #    'edu_gates'].mean()
                control_edu_gates=None
+               
             else:
                 control_dna_gates = None
                 control_edu_gates = None
+                #control_edu_gates = rb_gates
 
             # Get live dead
             if ldr_channel:
@@ -107,9 +119,18 @@ def run(object_level_directory, ndict, dfm=None,
                 else:
                     dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
                 dna_gates += np.array(fudge_gates)
-                a, d, _ = dcf.live_dead(ldr, ldr_gates, dna, dna_gates)
-                
-            fractions, cell_identity, gates = cc.plot_summary(dna, edu, fig,
+                cell_fate_dict, outcome = dcf.live_dead(ldr, ldr_gates, dna, dna_gates)
+                live_cols = [s for s in list(cell_fate_dict.keys()) if 'alive' in s]
+                dead_cols = [s for s in list(cell_fate_dict.keys()) if 'dead' in s]
+                a = 0
+                d = 0
+                for col in live_cols:
+                    a += cell_fate_dict[col]
+                for col in dead_cols:
+                    d += cell_fate_dict[col]
+            else:
+                outcome = np.array([1] * len(dna))
+            fractions, cell_identity, gates = cc.plot_summary(dna[outcome>=1], edu[outcome>=1], fig,
                                                               title=title,
                                                               plot='scatter',
                                                               plot_num=i,
@@ -123,9 +144,9 @@ def run(object_level_directory, ndict, dfm=None,
 
             # Revise phases based on pH3
             if ph3_channel:
-                f_ph3, ph3_cutoff, ph3_lims = pf.get_ph3_gates(ph3, cell_identity)
-                log_ph3 = pf.compute_log_ph3(ph3)
-                fractions = pf.evaluate_Mphase(log_ph3, ph3_cutoff, cell_identity)
+                f_ph3, ph3_cutoff, ph3_lims = pf.get_ph3_gates(ph3[outcome>=1], cell_identity)
+                log_ph3 = pf.compute_log_ph3(ph3[outcome>=1])
+                fractions, cell_identity = pf.evaluate_Mphase(log_ph3, ph3_cutoff, cell_identity)
 
             if ldr_channel:
                 fractions['cell_count'] = a
@@ -135,6 +156,8 @@ def run(object_level_directory, ndict, dfm=None,
 
             df_summary = df_summary.append(fractions, ignore_index=True)
             df_gates = df_gates.append(gates, ignore_index=True)
+
+            identity_dict[well] = cell_identity
         
         except ValueError:
             print(well, ' ValueError')
@@ -150,6 +173,9 @@ def run(object_level_directory, ndict, dfm=None,
             if 'Singular matrix' in str(e):
                 print(well, 'Singular matrix error')
                 pass
+        except ZeroDivisionError as e:
+            print(well, 'zero division error')
+            pass
         if (i + 1) % nb_plots_per_page == 0 or (i + 1) == nb_plots:
             plt.tight_layout()
             pdf_pages.savefig(fig)
@@ -160,7 +186,7 @@ def run(object_level_directory, ndict, dfm=None,
     summary_cols = ['well', 'cell_count__total',
                     # 'cell_count', 'cell_count__dead',
                     'G1', 'S', 'G2',
-                    'S_dropout', 'other']
+                    'S_dropout', 'subG1', 'beyondG2']
     if ph3_channel:
         summary_cols.append('M')
     if ldr_channel:
@@ -182,7 +208,7 @@ def run(object_level_directory, ndict, dfm=None,
         return df_summary, df_gates
     else:
         df_summary.to_csv('summary_%s.csv' % object_level_directory, index=False)        
-        return df_summary
+        return df_summary  #, identity_dict
 
 
 def merge_metadata(dfm, obj):

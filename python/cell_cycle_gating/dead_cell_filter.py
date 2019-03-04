@@ -459,34 +459,48 @@ def live_dead(ldrtxt, ldr_gates,
     ldr_gates = get_ldrgates(ldrtxt, x_ldr)
     ldr_outer = (ldrtxt < ldr_gates[0]) | (ldrtxt > ldr_gates[1])
     outcome = [-1 if b else 0 for b in ldr_outer]
-    dead = np.sum([1 for ot in outcome if ot == -1])
+    #dead = np.sum([1 for ot in outcome if ot == -1])
     alive = np.sum([1 for ot in outcome if ot >= 0])
     selected = 'DNA information unavailable'
     others = 'DNA information unavailable'
+    dead_ldrpos = np.sum(ldr_outer)
+    cell_fate_dict = {'alive': alive, 'dead_ldrpos': dead_ldrpos}
 
     if dna is not None:
         log_dna = compute_log_dna(dna, x_dna)
         dna_outermost = (log_dna < dna_gates[0]) | (log_dna > dna_gates[3])
+        dead_ldrpos = np.sum(ldr_outer)
+        dead_subg1 = np.sum((ldr_outer==False) & (log_dna < dna_gates[0]))
+        alive_supg2 = np.sum((ldr_outer==False) & (log_dna > dna_gates[2]))
+        alive_subg1 = np.sum((ldr_outer==False) & (log_dna > dna_gates[0]) & (log_dna < dna_gates[1]))
         dna_inner = ((log_dna > dna_gates[1]) &
                      (log_dna < dna_gates[2]) &
-                     (ldr_outer == False))
-        outcome = [-1 if d else 1 if s else 0
-                   for d, s in zip((ldr_outer | dna_outermost), dna_inner)]
-        alive = np.sum([1 for ot in outcome if ot >= 0])
-        dead = np.sum([1 for s in outcome if s == -1])
-        selected = np.sum([1 for s in outcome if s == 1])
-        others = np.sum([1 for s in outcome if s == 0])
+                     (ldr_outer==False))
+        alive = np.sum(dna_inner)
+        #outcome = [-1 if d else 1 if s else 0
+        #           for d, s in zip((ldr_outer | dna_outermost), dna_inner)]
+        outcome = ((1 * dna_inner) # normal live cells
+                   + (1.5 * ((ldr_outer==False) & (log_dna > dna_gates[2]))) # live but higher than G2
+                   + (-1 * ((ldr_outer==False) & (log_dna < dna_gates[0]))) # dead very low G1
+                   + (1.25 * ((ldr_outer==False) & (log_dna > dna_gates[0]) & (log_dna < dna_gates[1]))) # alive lower than G1
+                   + (-2 * ldr_outer)) 
+        cell_fate_dict = {'alive': alive, 'alive_subg1': alive_subg1, 'alive_supg2': alive_supg2,
+                          'dead_ldrpos': dead_ldrpos, 'dead_subg1': dead_subg1}
+        #alive = np.sum([1 for ot in outcome if ot >= 0])
+        #dead = np.sum([1 for s in outcome if s == -1])
+        #selected = np.sum([1 for s in outcome if s == 1])
+        #others = np.sum([1 for s in outcome if s == 0])
         if ax is not None:
-            ax.pie([selected, others, dead],
-                   labels=['selected', 'others', 'dead'],
-                   explode=(0.1, 0.1, 0.1), autopct='%1.1f%%')
+            ax.pie([alive, alive_subg1, alive_supg2, dead_ldrpos, dead_subg1],
+                   labels=['alive', 'alive_subg1', 'alive_supg2', 'dead_ldrpos', 'dead_subg1'],
+                   explode=(0.1, 0.1, 0.1, 0.1, 0.1), autopct='%1.1f%%')
             ax.axis('equal')
     else:
         if ax is not None:
-            ax.pie([alive, dead], labels=['alive', 'dead'],
+            ax.pie([alive, dead_ldrpos], labels=['alive', 'dead_ldrpos'],
                    explode=(0.1, 0.1), autopct='%1.1f%%')
             ax.axis('equal')
-    return alive, dead, outcome
+    return cell_fate_dict, outcome
 
 
 def plot_summary(ldr, dna, x_ldr=None, well=None):
@@ -513,7 +527,7 @@ def plot_summary(ldr, dna, x_ldr=None, well=None):
     ldr_gates, ldr_lims = plot_ldr_gating(ldr, x_ldr=x_ldr, ax=ax1)
     dna_gates = get_dna_gating(dna, ldr, ldr_gates, ax=ax2)
     plot_ldr_dna_scatter(dna, ldr, x_ldr=x_ldr, ax=ax3)
-    a, d, o = live_dead(ldr, ldr_gates, dna, dna_gates, x_ldr=x_ldr, ax=ax4)
+    cell_fate_dict, outcome = live_dead(ldr, ldr_gates, dna, dna_gates, x_ldr=x_ldr, ax=ax4)
     fig.tight_layout()
     fig.set_size_inches(w=8, h=7)
     if well:

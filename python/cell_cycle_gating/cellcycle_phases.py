@@ -1003,10 +1003,12 @@ def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna, dna_peaks,
                       (log_edu < edu_gates[0])) +
                3 * ((log_dna >= dna_gates[2]) &  # G2
                     (log_dna < dna_gates[3]) &
-                    (log_edu < edu_gates[0])))
+                    (log_edu < edu_gates[0])) +
+               0.5 * (log_dna < dna_gates[0]) +
+               3.1 * (log_dna > dna_gates[3]))
     fractions = {}
-    for state, val in zip(['other', 'G1', 'S', 'S_dropout', 'G2'],
-                          [0, 1, 2, 2.1, 3]):
+    for state, val in zip(['subG1', 'G1', 'S', 'S_dropout', 'G2', 'beyondG2'],
+                          [0.5, 1, 2, 2.1, 3, 3.1]):
         fractions[state] = np.mean(cell_id == (val % 4))
 
     for ig in np.arange(1, 4):

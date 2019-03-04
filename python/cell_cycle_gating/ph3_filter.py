@@ -138,13 +138,13 @@ def evaluate_Mphase(log_ph3, ph3_cutoff, cell_identity, ax=None):
     ph3_cell_identity[midx] = 4 + ph3_cell_identity[midx]/10
     ph3_cell_identity[midx] = np.floor(ph3_cell_identity[midx])
     fractions = {}
-    for state, val in zip(['other', 'G1', 'S', 'S_dropout', 'G2', 'M'],
-                          [0, 1, 2, 2.1, 3, 4]):
+    for state, val in zip(['subG1', 'G1', 'S', 'S_dropout', 'G2', 'M', 'beyondG2'],
+                          [0.5, 1, 2, 2.1, 3, 4, 3.1]):
         fractions[state] = np.mean(ph3_cell_identity == (val % 5))
     if ax is not None:
         ax.pie(fractions.values(), labels=fractions.keys(),  autopct='%1.1f%%')
         ax.axis('equal')
-    return fractions
+    return fractions, ph3_cell_identity
 
 
 def plot_summary(ph3, cell_identity, x_ph3=None, ph3_cutoff=None, well=None):
