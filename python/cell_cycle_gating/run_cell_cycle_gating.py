@@ -60,26 +60,7 @@ def run(object_level_directory, ndict, dfm=None,
     for i, file in enumerate(object_level_files):
         if i % nb_plots_per_page == 0:
             fig = plt.figure(figsize=(8.27, 11.69), dpi=100)
-        df = pd.read_table('%s/%s' % (object_level_directory, file))
-        df = map_channel_names(df, ndict)
-        well = re.search('result.(.*?)\[', file).group(1)
-        well = "%s%s" % (well[0], well[1:].zfill(2))
-
-        edu = np.array(df['edu'].tolist())
-        dna = np.array(df['dna'].tolist())
-
-        edu_notnan = ~np.isnan(edu)
-        edu = edu[edu_notnan]
-        dna = dna[edu_notnan]
-
-        if ldr_channel:
-            ldr = np.array(df['ldr'].tolist())
-            ldr = ldr[edu_notnan]     
-
-        if ph3_channel:
-            ph3 = np.array(df['ph3'].tolist())
-            ph3 = ph3[edu_notnan]
-            
+      
         # # Code hack for pRb gating
         # #--------------------------------------------------
         # px_edu = np.arange(-0.2, 5.3, .02)    
@@ -90,6 +71,25 @@ def run(object_level_directory, ndict, dfm=None,
         # #-------------------------------------------------
 
         try:
+            df = pd.read_table('%s/%s' % (object_level_directory, file))
+            df = map_channel_names(df, ndict)
+            well = re.search('result.(.*?)\[', file).group(1)
+            well = "%s%s" % (well[0], well[1:].zfill(2))
+
+            edu = np.array(df['edu'].tolist())
+            dna = np.array(df['dna'].tolist())
+
+            edu_notnan = ~np.isnan(edu)
+            edu = edu[edu_notnan]
+            dna = dna[edu_notnan]
+
+            if ldr_channel:
+                ldr = np.array(df['ldr'].tolist())
+                ldr = ldr[edu_notnan]     
+
+            if ph3_channel:
+                ph3 = np.array(df['ph3'].tolist())
+                ph3 = ph3[edu_notnan]
             # Get phases based on DNA and EdU
             if dfm is not None:
                 # dfm_ord.index = dfm_ord.well
@@ -168,13 +168,16 @@ def run(object_level_directory, ndict, dfm=None,
         except IndexError:
             print(well, 'IndexError')
             pass
-    # your code that will (maybe) throw
+        # your code that will (maybe) throw
         except np.linalg.LinAlgError as e:
             if 'Singular matrix' in str(e):
                 print(well, 'Singular matrix error')
                 pass
         except ZeroDivisionError as e:
             print(well, 'zero division error')
+            pass
+        except pandas.io.common.EmptyDataError:
+            print(well, 'EmptyDataError')
             pass
         if (i + 1) % nb_plots_per_page == 0 or (i + 1) == nb_plots:
             plt.tight_layout()
