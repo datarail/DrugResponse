@@ -176,7 +176,7 @@ def run(object_level_directory, ndict, dfm=None,
         except ZeroDivisionError as e:
             print(well, 'zero division error')
             pass
-        except pandas.io.common.EmptyDataError:
+        except pd.io.common.EmptyDataError:
             print(well, 'EmptyDataError')
             pass
         if (i + 1) % nb_plots_per_page == 0 or (i + 1) == nb_plots:
