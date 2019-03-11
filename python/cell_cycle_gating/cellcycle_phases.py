@@ -996,8 +996,8 @@ def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna, dna_peaks,
                     (log_edu < edu_gates[0])) +
                2 * ((log_dna >= dna_gates[0]) &  # S
                     (log_dna < dna_gates[3]) &
-                    (log_edu >= edu_gates[0]) &
-                    (log_edu < edu_gates[1])) +
+                    (log_edu >= edu_gates[0])) +
+                    #(log_edu < edu_gates[1])) +
                2.1 * ((log_dna >= dna_gates[1])  # S dropout
                       & (log_dna < dna_gates[2]) &
                       (log_edu < edu_gates[0])) +
