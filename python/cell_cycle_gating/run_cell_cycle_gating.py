@@ -46,6 +46,7 @@ def run(object_level_directory, ndict, dfm=None,
     else:
         object_level_files = [s for s in os.listdir(object_level_directory)
                               if 'Nuclei Selected[0].txt' in s]
+        dfm_ord=None
 
     df_summary = pd.DataFrame()
     identity_dict = {}
@@ -75,90 +76,20 @@ def run(object_level_directory, ndict, dfm=None,
             df = map_channel_names(df, ndict)
             well = re.search('result.(.*?)\[', file).group(1)
             well = "%s%s" % (well[0], well[1:].zfill(2))
-
-            edu = np.array(df['edu'].tolist())
-            dna = np.array(df['dna'].tolist())
-
-            edu_notnan = ~np.isnan(edu)
-            edu = edu[edu_notnan]
-            dna = dna[edu_notnan]
-
-            if ldr_channel:
-                ldr = np.array(df['ldr'].tolist())
-                ldr = ldr[edu_notnan]     
-
-            if ph3_channel:
-                ph3 = np.array(df['ph3'].tolist())
-                ph3 = ph3[edu_notnan]
-            # Get phases based on DNA and EdU
-            if dfm is not None:
-                # dfm_ord.index = dfm_ord.well
-                cell_line = dfm_ord.loc[well, 'cell_line']
-                agent = dfm_ord.loc[well, 'agent']
-                conc = dfm_ord.loc[well, 'concentration']
-                title = "%s %s %s (%s um)" % (well, cell_line, agent, conc)
-            else:
-                title = well
-            if control_gates is not None:
-               control_dna_gates = control_gates[control_gates.cell_line == cell_line][
-                   'dna_gates'].mean()
-               #control_edu_gates = control_gates[control_gates.cell_line == cell_line][
-               #    'edu_gates'].mean()
-               control_edu_gates=None
-               
-            else:
-                control_dna_gates = None
-                control_edu_gates = None
-                #control_edu_gates = rb_gates
-
-            # Get live dead
-            if ldr_channel:
-                ldr_gates = dcf.get_ldrgates(ldr)
-                if control_dna_gates is not None:
-                    dna_gates = control_dna_gates
-                else:
-                    dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
-                dna_gates += np.array(fudge_gates)
-                cell_fate_dict, outcome = dcf.live_dead(ldr, ldr_gates, dna, dna_gates)
-                live_cols = [s for s in list(cell_fate_dict.keys()) if 'alive' in s]
-                dead_cols = [s for s in list(cell_fate_dict.keys()) if 'dead' in s]
-                a = 0
-                d = 0
-                for col in live_cols:
-                    a += cell_fate_dict[col]
-                for col in dead_cols:
-                    d += cell_fate_dict[col]
-            else:
-                outcome = np.array([1] * len(dna))
-            fractions, cell_identity, gates = cc.plot_summary(dna[outcome>=1], edu[outcome>=1], fig,
-                                                              title=title,
-                                                              plot='scatter',
-                                                              plot_num=i,
-                                                              px_edu=px_edu,
-                                                              control_dna_gates=control_dna_gates,
-                                                              control_edu_gates=control_edu_gates,
-                                                              fudge_gates=np.array(fudge_gates))
-            if dfm is not None:
-                gates['well'] = well
-                gates['cell_line'] = cell_line
-
-            # Revise phases based on pH3
-            if ph3_channel:
-                f_ph3, ph3_cutoff, ph3_lims = pf.get_ph3_gates(ph3[outcome>=1], cell_identity)
-                log_ph3 = pf.compute_log_ph3(ph3[outcome>=1])
-                fractions, cell_identity = pf.evaluate_Mphase(log_ph3, ph3_cutoff, cell_identity)
-
-            if ldr_channel:
-                fractions['cell_count'] = a
-                fractions['cell_count__dead'] = d
-            fractions['well'] = well
-            fractions['cell_count__total'] = len(dna)
-
+            df['well'] = well
+            
+            fractions, gates, cell_identity = gate_well(df, dfm_ord=dfm_ord,
+                                                        ph3_channel=ph3_channel,
+                                                        ldr_channel=ldr_channel,
+                                                        px_edu=px_edu,
+                                                        control_based_gating=control_based_gating,
+                                                        control_gates=control_gates,
+                                                        fudge_gates=fudge_gates,
+                                                        fig=fig, plot_num=i)
             df_summary = df_summary.append(fractions, ignore_index=True)
             df_gates = df_gates.append(gates, ignore_index=True)
-
             identity_dict[well] = cell_identity
-        
+       
         except ValueError:
             print(well, ' ValueError')
             pass
@@ -212,6 +143,108 @@ def run(object_level_directory, ndict, dfm=None,
     else:
         df_summary.to_csv('summary_%s.csv' % object_level_directory, index=False)        
         return df_summary  #, identity_dict
+    
+
+def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
+              px_edu=None, control_based_gating=False,
+              control_gates=None, fudge_gates=np.array([0, 0, 0, 0]),
+              fig=None, plot_num=None):
+    """Gating on a single well
+    
+    Parameters
+    ----------
+    df : pandas.DataFrame
+       single cell data for a single well of the plate
+
+    Return
+    ------
+    fractions : dict
+       Fraction of cells classified to be in each phase of the cell cycle
+    gates : dict
+       Value of EdU and DNA at gates for given cell line and well
+    cell_identity : list[int]
+       mapping of each cell to a phase of the cell cycle
+    """
+    well = df.well.unique()[0]
+    edu = np.array(df['edu'].tolist())
+    dna = np.array(df['dna'].tolist())
+
+    edu_notnan = ~np.isnan(edu)
+    edu = edu[edu_notnan]
+    dna = dna[edu_notnan]
+
+    if ldr_channel:
+        ldr = np.array(df['ldr'].tolist())
+        ldr = ldr[edu_notnan]     
+
+    if ph3_channel:
+        ph3 = np.array(df['ph3'].tolist())
+        ph3 = ph3[edu_notnan]
+    # Get phases based on DNA and EdU
+    if dfm_ord is not None:
+        # dfm_ord.index = dfm_ord.well
+        cell_line = dfm_ord.loc[well, 'cell_line']
+        agent = dfm_ord.loc[well, 'agent']
+        conc = dfm_ord.loc[well, 'concentration']
+        title = "%s %s %s (%s um)" % (well, cell_line, agent, conc)
+    else:
+        title = well
+    if control_gates is not None:
+       control_dna_gates = control_gates[control_gates.cell_line == cell_line][
+           'dna_gates'].mean()
+       #control_edu_gates = control_gates[control_gates.cell_line == cell_line][
+       #    'edu_gates'].mean()
+       control_edu_gates=None
+
+    else:
+        control_dna_gates = None
+        control_edu_gates = None
+        #control_edu_gates = rb_gates
+
+    # Get live dead
+    if ldr_channel:
+        ldr_gates = dcf.get_ldrgates(ldr)
+        if control_dna_gates is not None:
+            dna_gates = control_dna_gates
+        else:
+            dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
+        dna_gates += np.array(fudge_gates)
+        cell_fate_dict, outcome = dcf.live_dead(ldr, ldr_gates, dna, dna_gates)
+        live_cols = [s for s in list(cell_fate_dict.keys()) if 'alive' in s]
+        dead_cols = [s for s in list(cell_fate_dict.keys()) if 'dead' in s]
+        a = 0
+        d = 0
+        for col in live_cols:
+            a += cell_fate_dict[col]
+        for col in dead_cols:
+            d += cell_fate_dict[col]
+    else:
+        outcome = np.array([1] * len(dna))
+    fractions, cell_identity, gates = cc.plot_summary(dna[outcome>=1], edu[outcome>=1], fig,
+                                                      title=title,
+                                                      plot='scatter',
+                                                      plot_num=plot_num,
+                                                      px_edu=px_edu,
+                                                      control_dna_gates=control_dna_gates,
+                                                      control_edu_gates=control_edu_gates,
+                                                      fudge_gates=np.array(fudge_gates))
+    if dfm_ord is not None:
+        gates['well'] = well
+        gates['cell_line'] = cell_line
+
+    # Revise phases based on pH3
+    if ph3_channel:
+        f_ph3, ph3_cutoff, ph3_lims = pf.get_ph3_gates(ph3[outcome>=1], cell_identity)
+        log_ph3 = pf.compute_log_ph3(ph3[outcome>=1])
+        fractions, cell_identity = pf.evaluate_Mphase(log_ph3, ph3_cutoff, cell_identity)
+
+    if ldr_channel:
+        fractions['cell_count'] = a
+        fractions['cell_count__dead'] = d
+    fractions['well'] = well
+    fractions['cell_count__total'] = len(dna)
+
+    return fractions, gates, cell_identity
 
 
 def merge_metadata(dfm, obj):
