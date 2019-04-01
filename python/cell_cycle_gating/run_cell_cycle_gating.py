@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import re
+import logging
 from matplotlib.backends.backend_pdf import PdfPages
 from cell_cycle_gating import dead_cell_filter as dcf
 from cell_cycle_gating import cellcycle_phases as cc
@@ -13,7 +14,7 @@ matplotlib.rcParams['ps.fonttype'] = 42
 
 
 
-def run(object_level_directory, ndict, dfm=None,
+def run(data, ndict, dfm=None,
         ph3_channel=True, ldr_channel=True,
         px_edu=None, control_based_gating=False,
         control_gates=None, fudge_gates=np.array([0, 0, 0, 0])):
@@ -37,28 +38,65 @@ def run(object_level_directory, ndict, dfm=None,
        well level summary of number of live/dead cells and fraction of
        cells in each phase of the cell cycle
     """
-    plt.ioff()   
-    if dfm is not None:
-        dfm_ord = merge_metadata(dfm, object_level_directory)
-        if control_based_gating:
-            dfm_ord = dfm_ord[dfm_ord.agent == 'DMSO'].copy()
-        object_level_files = dfm_ord['object_level_file'].tolist()
-    else:
-        object_level_files = [s for s in os.listdir(object_level_directory)
-                              if 'Nuclei Selected[0].txt' in s]
-        dfm_ord=None
-
+    plt.ioff()
     df_summary = pd.DataFrame()
     identity_dict = {}
     df_gates = pd.DataFrame()
-    nb_plots = len(object_level_files)
-    if control_based_gating:
-        pdf_pages = PdfPages('control_summary_%s.pdf' % object_level_directory)
+    
+    if os.path.isdir(data):
+        logfile = "%s.log" % data.split('[')[0]        
+        if dfm is not None:
+            dfm_ord = merge_metadata(dfm, data)
+            if control_based_gating:
+                dfm_ord = dfm_ord[dfm_ord.agent == 'DMSO'].copy()
+            object_level_data = dfm_ord['object_level_file'].tolist()
+        else:
+            object_level_data = [s for s in os.listdir(data)
+                                  if 'Nuclei Selected[0].txt' in s]
+            dfm_ord=None
     else:
-        pdf_pages = PdfPages('summary_%s.pdf' % object_level_directory)
+        logfile = "%s.log" % data.split('.csv')[0]
+        df_input = pd.read_csv(data)
+        if dfm is not None:
+            metadata_wells = dfm.well.unique()
+            df_input['well'] = df_input['well'].astype("category")
+            df_input.well.cat.set_categories(metadata_wells, inplace=True)
+            df_input = df_input.sort_values(['well'])
+            dfm_ord = dfm.sort_values(['cell_line', 'agent', 'concentration'])
+            if control_based_gating:
+                dfm_ord = dfm_ord[dfm_ord.agent == 'DMSO'].copy()
+            object_level_data = dfm_ord.well.unique()    
+        else:
+            dfm_ord = None
+            object_level_data = df_input.well.unique()
+
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+        
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    formatter = logging.Formatter("%(levelname)s - %(message)s")
+    # tell the handler to use this format
+    console.setFormatter(formatter)
+    logger.addHandler(console)
+
+    errorfile = logging.FileHandler(logfile)
+    errorfile.setLevel(logging.ERROR)
+    formatter = logging.Formatter("%(levelname)s - %(message)s")
+    errorfile.setFormatter(formatter)
+    logger.addHandler(errorfile)
+    #logging.basicConfig(filename=logfile, level=logging.ERROR)
+
+                            
+    nb_plots = len(object_level_data)    
+    if control_based_gating:
+        pdf_pages = PdfPages('control_summary_%s.pdf' % data.split('.csv')[0])
+    else:
+        pdf_pages = PdfPages('summary_%s.pdf' % data.split('.csv')[0])
+        
     nb_plots_per_page = 10
     # nb_pages = int(np.ceil(nb_plots / float(nb_plots_per_page)))
-    for i, file in enumerate(object_level_files):
+    for i, file in enumerate(object_level_data):
         if i % nb_plots_per_page == 0:
             fig = plt.figure(figsize=(8.27, 11.69), dpi=100)
       
@@ -72,12 +110,15 @@ def run(object_level_directory, ndict, dfm=None,
         # #-------------------------------------------------
 
         try:
-            df = pd.read_table('%s/%s' % (object_level_directory, file))
+            if os.path.isdir(data):
+                df = pd.read_table('%s/%s' % (data, file))  
+                well = re.search('result.(.*?)\[', file).group(1)
+                well = "%s%s" % (well[0], well[1:].zfill(2))
+                df['well'] = well
+            else:
+                df = df_input[df_input.well == file].copy()
+                
             df = map_channel_names(df, ndict)
-            well = re.search('result.(.*?)\[', file).group(1)
-            well = "%s%s" % (well[0], well[1:].zfill(2))
-            df['well'] = well
-            
             fractions, gates, cell_identity = gate_well(df, dfm_ord=dfm_ord,
                                                         ph3_channel=ph3_channel,
                                                         ldr_channel=ldr_channel,
@@ -90,31 +131,31 @@ def run(object_level_directory, ndict, dfm=None,
             df_gates = df_gates.append(gates, ignore_index=True)
             identity_dict[well] = cell_identity
        
-        except ValueError:
-            print(well, ' ValueError')
-            pass
-        except TypeError:
-            print(well, 'TypeError')
-            pass
-        except IndexError:
-            print(well, 'IndexError')
-            pass
+        except ValueError as err:
+            logging.error("%s in well %s" % (err, well))
+            #pass
+        except TypeError as err:
+            logging.error("%s in well %s" % (err, well))
+            #pass
+        except IndexError as err:
+            logging.error("%s in well %s" % (err, well))
+            #pass
         # your code that will (maybe) throw
-        except np.linalg.LinAlgError as e:
-            if 'Singular matrix' in str(e):
-                print(well, 'Singular matrix error')
-                pass
-        except ZeroDivisionError as e:
-            print(well, 'zero division error')
-            pass
-        except pd.io.common.EmptyDataError:
-            print(well, 'EmptyDataError')
-            pass
+        except np.linalg.LinAlgError as err:
+            if 'Singular matrix' in str(err):
+                logging.error("%s in well %s" % (err, well))
+            #pass
+        except ZeroDivisionError as err:
+            logging.error("%s in well %s" % (err, well))
+            #pass
+        except pd.io.common.EmptyDataError as err:
+            logging.error("%s in well %s" % (err, well))
+            #pass
         if (i + 1) % nb_plots_per_page == 0 or (i + 1) == nb_plots:
             plt.tight_layout()
             pdf_pages.savefig(fig)
-            print("Completed analysis for %d out of %d wells" %
-                  (i+1, len(object_level_files)))
+            logging.info("Completed analysis for %d out of %d wells" %
+                         (i+1, len(object_level_data)))
             plt.close('all')
     pdf_pages.close()
     summary_cols = ['well', 'cell_count__total',
@@ -132,16 +173,17 @@ def run(object_level_directory, ndict, dfm=None,
         df_summary = pd.concat([dfm_ord, df_summary], axis=1)
         df_summary = df_summary.loc[:, ~df_summary.columns.duplicated()]
     # Merge summary table with corpse count if available
-    dfc = get_corpse_count(object_level_directory)
+    if os.path.isdir(data):
+        dfc = get_corpse_count(data)
     if dfc is not None:
         df_summary.index = df_summary['well'].tolist()
         df_summary = pd.concat([df_summary, dfc], axis=1)
     if control_based_gating:
         df_summary = df_summary[df_summary.agent == 'DMSO'].copy()
-        df_summary.to_csv('control_summary_%s.csv' % object_level_directory, index=False)
+        df_summary.to_csv('control_summary_%s.csv' % data.split('.csv')[0], index=False)
         return df_summary, df_gates
     else:
-        df_summary.to_csv('summary_%s.csv' % object_level_directory, index=False)        
+        df_summary.to_csv('summary_%s.csv' % data.split('csv')[0], index=False)        
         return df_summary  #, identity_dict
     
 
