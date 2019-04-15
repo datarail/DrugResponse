@@ -16,7 +16,7 @@ matplotlib.rcParams['ps.fonttype'] = 42
 
 def run(data, ndict, dfm=None,
         ph3_channel=True, ldr_channel=True,
-        px_edu=None, control_based_gating=False,
+        px_edu=None, x_ldr=None, control_based_gating=False,
         control_gates=None, fudge_gates=np.array([0, 0, 0, 0])):
     """Executes cell cycle gating on all wells for which object level
     data is available in object_level_directory. Plots and saves summary pdf
@@ -55,14 +55,18 @@ def run(data, ndict, dfm=None,
                                   if 'Nuclei Selected[0].txt' in s]
             dfm_ord=None
     else:
-        logfile = "%s.log" % data.split('.csv')[0]
-        df_input = pd.read_csv(data)
+        logfile = "%s.log" % data.split('.txt')[0]
+        df_input = pd.read_table(data)
+        df_input = df_input.rename(columns=ndict)
         if dfm is not None:
+            barcode = data.split('.txt')[0]
+            dfm = dfm[dfm.barcode == barcode].copy()
             metadata_wells = dfm.well.unique()
             df_input['well'] = df_input['well'].astype("category")
             df_input.well.cat.set_categories(metadata_wells, inplace=True)
             df_input = df_input.sort_values(['well'])
             dfm_ord = dfm.sort_values(['cell_line', 'agent', 'concentration'])
+            dfm_ord.index = dfm_ord['well']
             if control_based_gating:
                 dfm_ord = dfm_ord[dfm_ord.agent == 'DMSO'].copy()
             object_level_data = dfm_ord.well.unique()    
@@ -71,6 +75,8 @@ def run(data, ndict, dfm=None,
             object_level_data = df_input.well.unique()
 
     logger = logging.getLogger()
+    if (logger.hasHandlers()):
+        logger.handlers.clear()
     logger.setLevel(logging.DEBUG)
         
     console = logging.StreamHandler()
@@ -90,9 +96,9 @@ def run(data, ndict, dfm=None,
                             
     nb_plots = len(object_level_data)    
     if control_based_gating:
-        pdf_pages = PdfPages('control_summary_%s.pdf' % data.split('.csv')[0])
+        pdf_pages = PdfPages('control_summary_%s.pdf' % data.split('.txt')[0])
     else:
-        pdf_pages = PdfPages('summary_%s.pdf' % data.split('.csv')[0])
+        pdf_pages = PdfPages('summary_%s.pdf' % data.split('.txt')[0])
         
     nb_plots_per_page = 10
     # nb_pages = int(np.ceil(nb_plots / float(nb_plots_per_page)))
@@ -117,12 +123,13 @@ def run(data, ndict, dfm=None,
                 df['well'] = well
             else:
                 df = df_input[df_input.well == file].copy()
+                well = file
                 
             df = map_channel_names(df, ndict)
             fractions, gates, cell_identity = gate_well(df, dfm_ord=dfm_ord,
                                                         ph3_channel=ph3_channel,
                                                         ldr_channel=ldr_channel,
-                                                        px_edu=px_edu,
+                                                        px_edu=px_edu, x_ldr=x_ldr,
                                                         control_based_gating=control_based_gating,
                                                         control_gates=control_gates,
                                                         fudge_gates=fudge_gates,
@@ -175,22 +182,24 @@ def run(data, ndict, dfm=None,
     # Merge summary table with corpse count if available
     if os.path.isdir(data):
         dfc = get_corpse_count(data)
+    else:
+        dfc = None
     if dfc is not None:
         df_summary.index = df_summary['well'].tolist()
         df_summary = pd.concat([df_summary, dfc], axis=1)
     if control_based_gating:
         df_summary = df_summary[df_summary.agent == 'DMSO'].copy()
-        df_summary.to_csv('control_summary_%s.csv' % data.split('.csv')[0], index=False)
+        df_summary.to_csv('control_summary_%s.csv' % data.split('.txt')[0], index=False)
         return df_summary, df_gates
     else:
-        df_summary.to_csv('summary_%s.csv' % data.split('csv')[0], index=False)        
+        df_summary.to_csv('summary_%s.csv' % data.split('.txt')[0], index=False)        
         return df_summary  #, identity_dict
     
 
 def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
-              px_edu=None, control_based_gating=False,
+              px_edu=None, x_ldr=None, control_based_gating=False,
               control_gates=None, fudge_gates=np.array([0, 0, 0, 0]),
-              fig=None, plot_num=None):
+              fig=None, plot_num=0):
     """Gating on a single well
     
     Parameters
@@ -245,13 +254,17 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
 
     # Get live dead
     if ldr_channel:
-        ldr_gates = dcf.get_ldrgates(ldr)
+        # TEST begin
+        if x_ldr is None:
+           x_ldr = np.arange(500, ldr.max(), 100)
+        # TEST end
+        ldr_gates = dcf.get_ldrgates(ldr, x_ldr)
         if control_dna_gates is not None:
             dna_gates = control_dna_gates
         else:
             dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
         dna_gates += np.array(fudge_gates)
-        cell_fate_dict, outcome = dcf.live_dead(ldr, ldr_gates, dna, dna_gates)
+        cell_fate_dict, outcome = dcf.live_dead(ldr, ldr_gates, dna, dna_gates, x_ldr=x_ldr)
         live_cols = [s for s in list(cell_fate_dict.keys()) if 'alive' in s]
         dead_cols = [s for s in list(cell_fate_dict.keys()) if 'dead' in s]
         a = 0
