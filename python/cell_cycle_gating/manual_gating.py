@@ -41,13 +41,19 @@ def reevaluate_phases(log_dna, dna_gates, log_edu, edu_gates):
 def update_gating(dfs, obj, well, ndict,
                   ldr_channel=True, ph3_channel=True,
                   x_dna=None, px_edu=None):
-    obj_file = get_obj_file(obj, well)
-    path2file = "%s/%s" % (obj, obj_file)
-    df = pd.read_table(path2file)
-    df = map_channel_names(df, ndict)
-    well = re.search('result.(.*?)\[', obj_file).group(1)
-    well = "%s%s" % (well[0], well[1:].zfill(2))
+    if os.path.isdir(obj):
+        obj_file = get_obj_file(obj, well)
+        path2file = "%s/%s" % (obj, obj_file)
+        df = pd.read_table(path2file)
+        df = map_channel_names(df, ndict)
+        well = re.search('result.(.*?)\[', obj_file).group(1)
+        well = "%s%s" % (well[0], well[1:].zfill(2))
 
+    else:
+        dfo = pd.read_table(obj)
+        dfo = dfo.rename(columns=ndict)
+        df = dfo[dfo.well == well].copy()
+        
     edu = np.array(df['edu'].tolist())
     dna = np.array(df['dna'].tolist())
 
@@ -118,12 +124,17 @@ def gating(log_dna, log_edu,
 def apply_gating(y, dfs, obj, well, ndict,
                   ldr_channel=True, ph3_channel=True,
                   x_dna=None, px_edu=None):
-    obj_file = get_obj_file(obj, well)
-    path2file = "%s/%s" % (obj, obj_file)
-    df = pd.read_table(path2file)
-    df = map_channel_names(df, ndict)
-    well = re.search('result.(.*?)\[', obj_file).group(1)
-    well = "%s%s" % (well[0], well[1:].zfill(2))
+    if os.path.isdir(obj):
+        obj_file = get_obj_file(obj, well)
+        path2file = "%s/%s" % (obj, obj_file)
+        df = pd.read_table(path2file)
+        df = map_channel_names(df, ndict)
+        well = re.search('result.(.*?)\[', obj_file).group(1)
+        well = "%s%s" % (well[0], well[1:].zfill(2))
+    else:
+        dfo = pd.read_table(obj)
+        dfo = dfo.rename(columns=ndict)
+        df = dfo[dfo.well == well].copy()
 
     edu = np.array(df['edu'].tolist())
     dna = np.array(df['dna'].tolist())
