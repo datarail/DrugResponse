@@ -1,3 +1,7 @@
+import matplotlib
+#matplotlib.use('Agg')
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,16 +12,13 @@ from matplotlib.backends.backend_pdf import PdfPages
 from cell_cycle_gating import dead_cell_filter as dcf
 from cell_cycle_gating import cellcycle_phases as cc
 from cell_cycle_gating import ph3_filter as pf
-import matplotlib
-matplotlib.rcParams['pdf.fonttype'] = 42
-matplotlib.rcParams['ps.fonttype'] = 42
-
 
 
 def run(data, ndict, dfm=None,
         ph3_channel=True, ldr_channel=True,
         px_edu=None, x_ldr=None, control_based_gating=False,
-        control_gates=None, fudge_gates=np.array([0, 0, 0, 0])):
+        control_gates=None, fudge_gates=np.array([0, 0, 0, 0]),
+        system=None):
     """Executes cell cycle gating on all wells for which object level
     data is available in object_level_directory. Plots and saves summary pdf
     of DNA v EdU distribution with automated gatings. A dataframe summarizing
@@ -106,15 +107,6 @@ def run(data, ndict, dfm=None,
         if i % nb_plots_per_page == 0:
             fig = plt.figure(figsize=(8.27, 11.69), dpi=100)
       
-        # # Code hack for pRb gating
-        # #--------------------------------------------------
-        # px_edu = np.arange(-0.2, 5.3, .02)    
-        # _, offset_edu, *_ =  cc.get_edu_gates(edu)   
-        # log_edu = cc.compute_log_edu(edu, px_edu, offset_edu)
-        # rb_lower = np.percentile(log_edu, 100)
-        # rb_gates = np.array([rb_lower+0.1, rb_lower+1])
-        # #-------------------------------------------------
-
         try:
             if os.path.isdir(data):
                 df = pd.read_table('%s/%s' % (data, file))  
@@ -126,6 +118,8 @@ def run(data, ndict, dfm=None,
                 well = file
                 
             df = map_channel_names(df, ndict)
+            if system='ixm':
+                x_ldr = np.arange(500, ldr.max(), 100)
             fractions, gates, cell_identity = gate_well(df, dfm_ord=dfm_ord,
                                                         ph3_channel=ph3_channel,
                                                         ldr_channel=ldr_channel,
@@ -255,8 +249,8 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
     # Get live dead
     if ldr_channel:
         # TEST begin
-        if x_ldr is None:
-           x_ldr = np.arange(500, ldr.max(), 100)
+#        if x_ldr is None:
+#           x_ldr = np.arange(500, ldr.max(), 100)
         # TEST end
         ldr_gates = dcf.get_ldrgates(ldr, x_ldr)
         if control_dna_gates is not None:
