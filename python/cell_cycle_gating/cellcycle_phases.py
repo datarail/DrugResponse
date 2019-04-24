@@ -1,3 +1,8 @@
+import matplotlib
+#matplotlib.use('Agg')
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+
 from cell_cycle_gating.findpeaks import findpeaks, get_kde
 import numpy as np
 from scipy.stats.mstats import mquantiles as quantile
@@ -11,10 +16,6 @@ from scipy.spatial.distance import pdist, squareform
 from scipy.stats import norm
 import matplotlib.gridspec as gridspec
 from scipy.ndimage.morphology import generate_binary_structure
-import matplotlib
-matplotlib.rcParams['pdf.fonttype'] = 42
-matplotlib.rcParams['ps.fonttype'] = 42
-
 
 
 def get_edu_gates(edu, px_edu=None, ax=None):
