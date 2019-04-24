@@ -40,7 +40,7 @@ def reevaluate_phases(log_dna, dna_gates, log_edu, edu_gates):
 
 def update_gating(dfs, obj, well, ndict,
                   ldr_channel=True, ph3_channel=True,
-                  x_dna=None, px_edu=None):
+                  x_dna=None, px_edu=None, x_ldr=None):
     if os.path.isdir(obj):
         obj_file = get_obj_file(obj, well)
         path2file = "%s/%s" % (obj, obj_file)
@@ -63,20 +63,34 @@ def update_gating(dfs, obj, well, ndict,
 
     if ldr_channel:
         ldr = np.array(df['ldr'].tolist())
-        ldr = ldr[edu_notnan]     
+        ldr = ldr[edu_notnan]
+        ldr_gates = dcf.get_ldrgates(ldr, x_ldr)
+        dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
+        cell_fate_dict, outcome = dcf.live_dead(ldr, ldr_gates, dna, dna_gates, x_ldr=x_ldr)
+        live_cols = [s for s in list(cell_fate_dict.keys()) if 'alive' in s]
+        dead_cols = [s for s in list(cell_fate_dict.keys()) if 'dead' in s]
+        a = 0
+        d = 0
+        for col in live_cols:
+            a += cell_fate_dict[col]
+        for col in dead_cols:
+            d += cell_fate_dict[col]
+    else:
+        outcome = np.array([1] * len(dna))
 
     if ph3_channel:
         #ph3 = np.array(df['Nuclei Selected - pH3INT'].tolist())
         ph3 = np.array(df['ph3'].tolist())
         ph3 = ph3[edu_notnan]
+        ph3 = ph3[outcome>=1]
 
     if px_edu is None:
         px_edu = np.arange(-0.2, 5.3, .02)
     if x_dna is None:
         x_dna = np.arange(2.5, 8, 0.02)  
-    log_dna = cc.compute_log_dna(dna, x_dna)
-    edu_shift, offset_edu, edu_g1_max, edu_s_min = cc.get_edu_gates(edu, px_edu) 
-    log_edu = cc.compute_log_edu(edu, px_edu, offset_edu)
+    log_dna = cc.compute_log_dna(dna[outcome>=1], x_dna)
+    edu_shift, offset_edu, edu_g1_max, edu_s_min = cc.get_edu_gates(edu[outcome>=1], px_edu) 
+    log_edu = cc.compute_log_edu(edu[outcome>=1], px_edu, offset_edu)
 
     y=interactive(gating,
                   log_dna=fixed(log_dna), 
@@ -123,7 +137,7 @@ def gating(log_dna, log_edu,
 
 def apply_gating(y, dfs, obj, well, ndict,
                   ldr_channel=True, ph3_channel=True,
-                  x_dna=None, px_edu=None):
+                  x_dna=None, px_edu=None, x_ldr=None):
     if os.path.isdir(obj):
         obj_file = get_obj_file(obj, well)
         path2file = "%s/%s" % (obj, obj_file)
@@ -145,7 +159,20 @@ def apply_gating(y, dfs, obj, well, ndict,
 
     if ldr_channel:
         ldr = np.array(df['ldr'].tolist())
-        ldr = ldr[edu_notnan]     
+        ldr = ldr[edu_notnan]
+        ldr_gates = dcf.get_ldrgates(ldr, x_ldr)
+        dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
+        cell_fate_dict, outcome = dcf.live_dead(ldr, ldr_gates, dna, dna_gates, x_ldr=x_ldr)
+        live_cols = [s for s in list(cell_fate_dict.keys()) if 'alive' in s]
+        dead_cols = [s for s in list(cell_fate_dict.keys()) if 'dead' in s]
+        a = 0
+        d = 0
+        for col in live_cols:
+            a += cell_fate_dict[col]
+        for col in dead_cols:
+            d += cell_fate_dict[col]
+    else:
+        outcome = np.array([1] * len(dna))
 
     if ph3_channel:
         #ph3 = np.array(df['Nuclei Selected - pH3INT'].tolist())
@@ -156,9 +183,9 @@ def apply_gating(y, dfs, obj, well, ndict,
         px_edu = np.arange(-0.2, 5.3, .02)
     if x_dna is None:
         x_dna = np.arange(2.5, 8, 0.02)  
-    log_dna = cc.compute_log_dna(dna, x_dna)
-    edu_shift, offset_edu, edu_g1_max, edu_s_min = cc.get_edu_gates(edu, px_edu) 
-    log_edu = cc.compute_log_edu(edu, px_edu, offset_edu)
+    log_dna = cc.compute_log_dna(dna[outcome>=1], x_dna)
+    edu_shift, offset_edu, edu_g1_max, edu_s_min = cc.get_edu_gates(edu[outcome>=1], px_edu) 
+    log_edu = cc.compute_log_edu(edu[outcome>=1], px_edu, offset_edu)
 
     ndna_gates = [y.kwargs['g1_left'], y.kwargs['g1_right'], y.kwargs['g2_left'], y.kwargs['g2_right']]
     nedu_gates = [y.kwargs['edu_lower'], y.kwargs['edu_upper']]
@@ -166,9 +193,14 @@ def apply_gating(y, dfs, obj, well, ndict,
     fractions, cell_id = reevaluate_phases(log_dna, ndna_gates, log_edu, nedu_gates)    
 
     if ph3_channel:
-        f_ph3, ph3_cutoff, ph3_lims = pf.get_ph3_gates(ph3, cell_id)
-        log_ph3 = pf.compute_log_ph3(ph3)
+        f_ph3, ph3_cutoff, ph3_lims = pf.get_ph3_gates(ph3[outcome>=1], cell_id)
+        log_ph3 = pf.compute_log_ph3(ph3[outcome>=1])
         fractions, cell_id = pf.evaluate_Mphase(log_ph3, ph3_cutoff, cell_id)
+
+    if ldr_channel:
+        fractions['cell_count'] = a
+        fractions['cell_count__dead'] = d
+    fractions['cell_count__total'] = len(dna)    
 
     if 'corpse_count' in dfs.columns.tolist():
         fractions['corpse_count'] = dfs[dfs.well == well]['corpse_count'].values[0]
