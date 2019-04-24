@@ -118,7 +118,7 @@ def run(data, ndict, dfm=None,
                 well = file
                 
             df = map_channel_names(df, ndict)
-            if system='ixm':
+            if system=='ixm':
                 x_ldr = np.arange(500, ldr.max(), 100)
             fractions, gates, cell_identity = gate_well(df, dfm_ord=dfm_ord,
                                                         ph3_channel=ph3_channel,
@@ -253,11 +253,11 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
 #           x_ldr = np.arange(500, ldr.max(), 100)
         # TEST end
         ldr_gates = dcf.get_ldrgates(ldr, x_ldr)
-        if control_dna_gates is not None:
-            dna_gates = control_dna_gates
-        else:
-            dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
-        dna_gates += np.array(fudge_gates)
+        #if control_dna_gates is not None:
+        #    dna_gates = control_dna_gates
+        #else:
+        dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
+        #dna_gates += np.array(fudge_gates)
         cell_fate_dict, outcome = dcf.live_dead(ldr, ldr_gates, dna, dna_gates, x_ldr=x_ldr)
         live_cols = [s for s in list(cell_fate_dict.keys()) if 'alive' in s]
         dead_cols = [s for s in list(cell_fate_dict.keys()) if 'dead' in s]
