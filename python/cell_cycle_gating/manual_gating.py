@@ -40,7 +40,7 @@ def reevaluate_phases(log_dna, dna_gates, log_edu, edu_gates):
 
 def update_gating(dfs, obj, well, ndict,
                   ldr_channel=True, ph3_channel=True,
-                  x_dna=None, px_edu=None, x_ldr=None):
+                  x_dna=None, px_edu=None, x_ldr=None, system=None):
     if os.path.isdir(obj):
         obj_file = get_obj_file(obj, well)
         path2file = "%s/%s" % (obj, obj_file)
@@ -64,6 +64,8 @@ def update_gating(dfs, obj, well, ndict,
     if ldr_channel:
         ldr = np.array(df['ldr'].tolist())
         ldr = ldr[edu_notnan]
+        if system == 'ixm':
+            x_ldr = np.arange(500, ldr.max(), 100)
         ldr_gates = dcf.get_ldrgates(ldr, x_ldr)
         dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
         cell_fate_dict, outcome = dcf.live_dead(ldr, ldr_gates, dna, dna_gates, x_ldr=x_ldr)
@@ -137,7 +139,7 @@ def gating(log_dna, log_edu,
 
 def apply_gating(y, dfs, obj, well, ndict,
                   ldr_channel=True, ph3_channel=True,
-                  x_dna=None, px_edu=None, x_ldr=None):
+                  x_dna=None, px_edu=None, x_ldr=None, system=None):
     if os.path.isdir(obj):
         obj_file = get_obj_file(obj, well)
         path2file = "%s/%s" % (obj, obj_file)
@@ -160,6 +162,8 @@ def apply_gating(y, dfs, obj, well, ndict,
     if ldr_channel:
         ldr = np.array(df['ldr'].tolist())
         ldr = ldr[edu_notnan]
+        if system == 'ixm':
+            x_ldr = np.arange(500, ldr.max(), 100)
         ldr_gates = dcf.get_ldrgates(ldr, x_ldr)
         dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
         cell_fate_dict, outcome = dcf.live_dead(ldr, ldr_gates, dna, dna_gates, x_ldr=x_ldr)
