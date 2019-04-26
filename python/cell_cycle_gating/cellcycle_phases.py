@@ -5,6 +5,7 @@ matplotlib.rcParams['ps.fonttype'] = 42
 
 from cell_cycle_gating.findpeaks import findpeaks, get_kde
 import numpy as np
+from numpy import matlib
 from scipy.stats.mstats import mquantiles as quantile
 import matplotlib.pyplot as plt
 from cell_cycle_gating import smooth
@@ -437,10 +438,10 @@ def get_phase_candidates(peak_candidates, edu_shift, edu_s_min):
                       > edu_shift) &
                      (peak_candidates[:, 1] > (edu_s_min + 0.2 * edu_shift)))
     if np.any(edu_peak_bool):
-        repmat1 = np.matlib.repmat(
+        repmat1 = matlib.repmat(
             peak_candidates[:, 0].reshape(peak_candidates.shape[0], 1),
             1, peak_candidates.shape[0])
-        repmat2 = np.matlib.repmat(
+        repmat2 = matlib.repmat(
             peak_candidates[:, 2].reshape(peak_candidates.shape[0], 1),
             1, peak_candidates.shape[0])
         s_phase_candidates = peak_candidates[np.argmax(
@@ -477,10 +478,10 @@ def get_phase_candidates(peak_candidates, edu_shift, edu_s_min):
                 p2 = np.zeros(peak_candidates.shape[0])
                 p3 = np.concatenate((p1, p2)).reshape(2, len(p2)).T
                 # pdist(p3)
-                repmat3 = np.matlib.repmat(
+                repmat3 = matlib.repmat(
                     peak_candidates[:, 2].reshape(peak_candidates.shape[0], 1),
                     1, peak_candidates.shape[0])
-                repmat4 = np.matlib.repmat(
+                repmat4 = matlib.repmat(
                     peak_candidates[:, 2].reshape(
                         peak_candidates.shape[0], 1).T,
                     peak_candidates.shape[0], 1)
