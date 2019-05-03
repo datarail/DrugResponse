@@ -39,13 +39,17 @@ def run(data, ndict, dfm=None,
        well level summary of number of live/dead cells and fraction of
        cells in each phase of the cell cycle
     """
+    if not os.path.isdir('results'):
+        os.mkdir('results')
+    if not os.path.isdir('logs'):
+        os.mkdir('logs')
     plt.ioff()
     df_summary = pd.DataFrame()
     identity_dict = {}
     df_gates = pd.DataFrame()
     
     if os.path.isdir(data):
-        logfile = "%s.log" % data.split('[')[0]        
+        logfile = "logs/%s.log" % data.split('[')[0]        
         if dfm is not None:
             dfm_ord = merge_metadata(dfm, data)
             if control_based_gating:
@@ -56,7 +60,7 @@ def run(data, ndict, dfm=None,
                                   if 'Nuclei Selected[0].txt' in s]
             dfm_ord=None
     else:
-        logfile = "%s.log" % data.split('.txt')[0]
+        logfile = "logs/%s.log" % data.split('.txt')[0]
         df_input = pd.read_table(data)
         df_input = df_input.rename(columns=ndict)
         if dfm is not None:
@@ -97,9 +101,9 @@ def run(data, ndict, dfm=None,
                             
     nb_plots = len(object_level_data)    
     if control_based_gating:
-        pdf_pages = PdfPages('control_summary_%s.pdf' % data.split('.txt')[0])
+        pdf_pages = PdfPages('results/control_summary_%s.pdf' % data.split('.txt')[0])
     else:
-        pdf_pages = PdfPages('summary_%s.pdf' % data.split('.txt')[0])
+        pdf_pages = PdfPages('results/summary_%s.pdf' % data.split('.txt')[0])
         
     nb_plots_per_page = 10
     # nb_pages = int(np.ceil(nb_plots / float(nb_plots_per_page)))
@@ -183,10 +187,10 @@ def run(data, ndict, dfm=None,
         df_summary = pd.concat([df_summary, dfc], axis=1)
     if control_based_gating:
         df_summary = df_summary[df_summary.agent == 'DMSO'].copy()
-        df_summary.to_csv('control_summary_%s.csv' % data.split('.txt')[0], index=False)
+        df_summary.to_csv('results/control_summary_%s.csv' % data.split('.txt')[0], index=False)
         return df_summary, df_gates
     else:
-        df_summary.to_csv('summary_%s.csv' % data.split('.txt')[0], index=False)        
+        df_summary.to_csv('results/summary_%s.csv' % data.split('.txt')[0], index=False)        
         return df_summary  #, identity_dict
     
 
