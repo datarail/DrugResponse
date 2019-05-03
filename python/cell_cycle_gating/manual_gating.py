@@ -38,7 +38,7 @@ def reevaluate_phases(log_dna, dna_gates, log_edu, edu_gates):
     return fractions, cell_id
 
 
-def update_gating(dfs, obj, well, ndict,
+def update_gating(obj, well, ndict,
                   ldr_channel=True, ph3_channel=True,
                   x_dna=None, px_edu=None, x_ldr=None, system=None):
     if os.path.isdir(obj):
@@ -137,7 +137,7 @@ def gating(log_dna, log_edu,
     plt.show()
     
 
-def apply_gating(y, dfs, obj, well, ndict,
+def apply_gating(y, obj, well, ndict,
                   ldr_channel=True, ph3_channel=True,
                   x_dna=None, px_edu=None, x_ldr=None, system=None):
     if os.path.isdir(obj):
@@ -204,7 +204,17 @@ def apply_gating(y, dfs, obj, well, ndict,
     if ldr_channel:
         fractions['cell_count'] = a
         fractions['cell_count__dead'] = d
-    fractions['cell_count__total'] = len(dna)    
+    fractions['cell_count__total'] = len(dna)
+
+    results_file = "results/summary_%s.csv" % data.split('.txt')[0]
+    dfs = pd.read_csv(results_file)
+
+    if not os.path.isdir('results/original_automated'):
+        os.mkdir('results/original_automated')
+    
+    results_file_automated = "results/original_automated/summary_%s.csv" % data.split('.txt')[0]
+    if not os.path.isfile(results_file_automated):
+        dfs.to_csv(results_file_automated, index=False)    
 
     if 'corpse_count' in dfs.columns.tolist():
         fractions['corpse_count'] = dfs[dfs.well == well]['corpse_count'].values[0]
@@ -215,6 +225,7 @@ def apply_gating(y, dfs, obj, well, ndict,
     dfs2.index = dfs2['well']
     #dfs2 = dfs2.append(fractions, ignore_index=True)
     dfs2.update(dnew)
+    dfs2.to_csv(results_file, index=False)
     return dfs2, fractions, cell_id
 
 
