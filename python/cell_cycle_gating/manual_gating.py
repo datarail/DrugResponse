@@ -206,13 +206,13 @@ def apply_gating(y, obj, well, ndict,
         fractions['cell_count__dead'] = d
     fractions['cell_count__total'] = len(dna)
 
-    results_file = "results/summary_%s.csv" % data.split('.txt')[0]
+    results_file = "results/summary_%s.csv" % obj.split('.txt')[0]
     dfs = pd.read_csv(results_file)
 
     if not os.path.isdir('results/original_automated'):
         os.mkdir('results/original_automated')
     
-    results_file_automated = "results/original_automated/summary_%s.csv" % data.split('.txt')[0]
+    results_file_automated = "results/original_automated/summary_%s.csv" % obj.split('.txt')[0]
     if not os.path.isfile(results_file_automated):
         dfs.to_csv(results_file_automated, index=False)    
 
