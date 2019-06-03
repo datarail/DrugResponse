@@ -12,6 +12,8 @@ from matplotlib.backends.backend_pdf import PdfPages
 from cell_cycle_gating import dead_cell_filter as dcf
 from cell_cycle_gating import cellcycle_phases as cc
 from cell_cycle_gating import ph3_filter as pf
+from cell_cycle_gating.findpeaks import get_kde, findpeaks, get_prominence_reference_level
+import seaborn as sns
 
 
 def run(data, ndict, dfm=None,
@@ -120,9 +122,16 @@ def run(data, ndict, dfm=None,
             else:
                 df = df_input[df_input.well == file].copy()
                 well = file
-                
+                if 'dna' not in df.columns.tolist():
+                    df['dna'] = df['Cell: Average Intensity_Average (DDD)'].multiply(
+                        df['Cell: Area_Average (DDD)'])
+    
             df = map_channel_names(df, ndict)
             if system=='ixm':
+                edu = np.array(df['edu'].tolist())
+                edu_notnan = ~np.isnan(edu)
+                ldr = np.array(df['ldr'].tolist())
+                ldr = ldr[edu_notnan]
                 x_ldr = np.arange(500, ldr.max(), 100)
             fractions, gates, cell_identity = gate_well(df, dfm_ord=dfm_ord,
                                                         ph3_channel=ph3_channel,
@@ -273,7 +282,7 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
             d += cell_fate_dict[col]
     else:
         outcome = np.array([1] * len(dna))
-    fractions, cell_identity, gates = cc.plot_summary(dna[outcome>=1], edu[outcome>=1], fig,
+    fractions, cell_identity, gates = cc.plot_summary(dna[outcome>=1], edu[outcome>=1], fig=None,
                                                       title=title,
                                                       plot='scatter',
                                                       plot_num=plot_num,
@@ -287,9 +296,28 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
 
     # Revise phases based on pH3
     if ph3_channel:
-        f_ph3, ph3_cutoff, ph3_lims = pf.get_ph3_gates(ph3[outcome>=1], cell_identity)
+        #grid_size = (5, 2)
+        #plot_num = plot_num % 10
+        #rel_pos = np.unravel_index(plot_num, grid_size)
+        #axp = plt.subplot2grid(grid_size, rel_pos)
+        
         log_ph3 = pf.compute_log_ph3(ph3[outcome>=1])
+        #x_ph3 = np.arange(2.5, 8, 0.02)
+        #f_ph3 = get_kde(log_ph3, x_ph3)
+        #peak_amp, peak_loc, peak_width = findpeaks(f_ph3.tolist(), npeaks=2, thresh=0.1)
+        #if len(peak_amp) >= 2:
+        #    cutoff_loc, _ = get_prominence_reference_level(
+        #        f_ph3.tolist(), peak_amp[1], peak_loc[1])
+        #    ph3_cutoff = x_ph3[cutoff_loc]
+        #del_ph3 = x_ph3[peak_loc[0]] - log_ph3.min()
+        #ph3_cutoff = x_ph3[peak_loc[0]] + del_ph3
+        #else:
+        f_ph3, ph3_cutoff, ph3_lims = pf.get_ph3_gates(ph3[outcome>=1], cell_identity)
         fractions, cell_identity = pf.evaluate_Mphase(log_ph3, ph3_cutoff, cell_identity)
+        #sns.kdeplot(log_ph3, ax=axp)
+        #axp.vlines(ph3_cutoff, 0, 2)
+        #axp.text(ph3_cutoff+0.1, 1, str(fractions['M']))
+        #axp.set_title(title, fontsize=6)
 
     if ldr_channel:
         fractions['cell_count'] = a
