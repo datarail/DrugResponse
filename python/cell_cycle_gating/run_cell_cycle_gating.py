@@ -20,7 +20,7 @@ def run(data, ndict, dfm=None,
         ph3_channel=True, ldr_channel=True,
         px_edu=None, x_ldr=None, control_based_gating=False,
         control_gates=None, fudge_gates=np.array([0, 0, 0, 0]),
-        system=None):
+        system=None, header=7):
     """Executes cell cycle gating on all wells for which object level
     data is available in object_level_directory. Plots and saves summary pdf
     of DNA v EdU distribution with automated gatings. A dataframe summarizing
@@ -63,7 +63,7 @@ def run(data, ndict, dfm=None,
             dfm_ord=None
     else:
         logfile = "logs/%s.log" % data.split('.txt')[0]
-        df_input = pd.read_table(data)
+        df_input = pd.read_table(data, header=header)
         df_input = df_input.rename(columns=ndict)
         if dfm is not None:
             barcode = data.split('.txt')[0]
@@ -125,14 +125,23 @@ def run(data, ndict, dfm=None,
                 if 'dna' not in df.columns.tolist():
                     df['dna'] = df['Cell: Average Intensity_Average (DDD)'].multiply(
                         df['Cell: Area_Average (DDD)'])
+                if 'ph3' not in df.columns.tolist():
+                    df['ph3'] = df['Cell: pH3rawINT (DDD-bckgrnd)'] - \
+                        df['Cell: pH3background (DDD-bckgrnd)']    
     
             df = map_channel_names(df, ndict)
             if system=='ixm':
                 edu = np.array(df['edu'].tolist())
-                edu_notnan = ~np.isnan(edu)
+                if ph3_channel:
+                    ph3 = np.array(df['ph3'].tolist())
+                    cells_notnan = ~(np.isnan(edu) | np.isnan(ph3))
+                else:
+                    cells_notnan = ~np.isnan(edu)
                 ldr = np.array(df['ldr'].tolist())
-                ldr = ldr[edu_notnan]
-                x_ldr = np.arange(500, ldr.max(), 100)
+                ldr = ldr[cells_notnan]
+                ldr_min = np.max((100, ldr.min() - 100))
+                ldr_max = ldr.max() + 100
+                x_ldr = np.arange(ldr_min, ldr_max, 100)
             fractions, gates, cell_identity = gate_well(df, dfm_ord=dfm_ord,
                                                         ph3_channel=ph3_channel,
                                                         ldr_channel=ldr_channel,
@@ -173,6 +182,7 @@ def run(data, ndict, dfm=None,
             plt.close('all')
     pdf_pages.close()
     summary_cols = ['well', 'cell_count__total',
+                    'mean_Sphase_edu',
                     # 'cell_count', 'cell_count__dead',
                     'G1', 'S', 'G2',
                     'S_dropout', 'subG1', 'beyondG2']
@@ -227,17 +237,19 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
     edu = np.array(df['edu'].tolist())
     dna = np.array(df['dna'].tolist())
 
-    edu_notnan = ~np.isnan(edu)
-    edu = edu[edu_notnan]
-    dna = dna[edu_notnan]
+    if ph3_channel:
+        ph3 = np.array(df['ph3'].tolist())
+        cells_notnan = ~(np.isnan(edu) | np.isnan(ph3))
+        ph3 = ph3[cells_notnan]
+    else:
+        cells_notnan = ~np.isnan(edu)
+    edu = edu[cells_notnan]
+    dna = dna[cells_notnan]
 
     if ldr_channel:
         ldr = np.array(df['ldr'].tolist())
-        ldr = ldr[edu_notnan]     
-
-    if ph3_channel:
-        ph3 = np.array(df['ph3'].tolist())
-        ph3 = ph3[edu_notnan]
+        ldr = ldr[cells_notnan]     
+       
     # Get phases based on DNA and EdU
     if dfm_ord is not None:
         # dfm_ord.index = dfm_ord.well
@@ -290,6 +302,7 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
                                                       control_dna_gates=control_dna_gates,
                                                       control_edu_gates=control_edu_gates,
                                                       fudge_gates=np.array(fudge_gates))
+    
     if dfm_ord is not None:
         gates['well'] = well
         gates['cell_line'] = cell_line
@@ -319,6 +332,9 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
         #axp.text(ph3_cutoff+0.1, 1, str(fractions['M']))
         #axp.set_title(title, fontsize=6)
 
+    edu_live = edu[outcome >=1]   
+    fractions['mean_Sphase_edu'] = edu_live[cell_identity==2].mean()
+    
     if ldr_channel:
         fractions['cell_count'] = a
         fractions['cell_count__dead'] = d
@@ -434,7 +450,7 @@ def map_channel_names(df, ndict):
     return df
 
 
-def get_ixmc_barcode(filename):
+def get_ixmc_barcode(filename, corpse_col=None):
     """
     Parameters
     ----------
@@ -448,9 +464,18 @@ def get_ixmc_barcode(filename):
     """
     headers = []
     f = open(filename)
-    for _ in range(7):
+    for _ in range(8):
         headers.append(f.readline())
     barcode = headers[4].split('=')[1].split('"\n')[0]
+    # if '_' not in barcode:
+    #     date = barcode[:6]
+    #     plate_number = re.search(r'I*(.*)', barcode).group(1)
+    #     filler = re.search(r'%s([^"]*)%s' % (date, plate_number)).group(1)
+    columns = headers[-1].split('"\t"')
+    columns = [s.split('"\n')[0] for s in columns]
+    if corpse_col in columns:
+        barcode = 'corpse_%s' % barcode
+    f.close()    
     return barcode
 
 
