@@ -125,7 +125,7 @@ def run(data, ndict, dfm=None,
                 if 'dna' not in df.columns.tolist():
                     df['dna'] = df['Cell: Average Intensity_Average (DDD)'].multiply(
                         df['Cell: Area_Average (DDD)'])
-                if 'ph3' not in df.columns.tolist():
+                if ph3_channel and 'ph3' not in df.columns.tolist():
                     df['ph3'] = df['Cell: pH3rawINT (DDD-bckgrnd)'] - \
                         df['Cell: pH3background (DDD-bckgrnd)']    
     
