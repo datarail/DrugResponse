@@ -126,8 +126,8 @@ def run(data, ndict, dfm=None,
                     df['dna'] = df['Cell: Average Intensity_Average (DDD)'].multiply(
                         df['Cell: Area_Average (DDD)'])
                 if ph3_channel and 'ph3' not in df.columns.tolist():
-                    df['ph3'] = df['Cell: pH3rawINT (DDD-bckgrnd)'] - \
-                        df['Cell: pH3background (DDD-bckgrnd)']    
+                    df['ph3'] = df['Cell: pH3rawINT (DDD-bckgrnd-5ch)'] - \
+                        df['Cell: pH3background (DDD-bckgrnd-5ch)']    
     
             df = map_channel_names(df, ndict)
             if system=='ixm':
@@ -236,6 +236,8 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
     well = df.well.unique()[0]
     edu = np.array(df['edu'].tolist())
     dna = np.array(df['dna'].tolist())
+    edu = edu.astype(np.float)
+    #edu[edu < 0] = np.nan
 
     if ph3_channel:
         ph3 = np.array(df['ph3'].tolist())
@@ -244,6 +246,8 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
     else:
         cells_notnan = ~np.isnan(edu)
     edu = edu[cells_notnan]
+    #if edu.min() < 0:
+    #    edu += np.abs(edu.min())
     dna = dna[cells_notnan]
 
     if ldr_channel:
@@ -294,18 +298,20 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
             d += cell_fate_dict[col]
     else:
         outcome = np.array([1] * len(dna))
-    fractions, cell_identity, gates = cc.plot_summary(dna[outcome>=1], edu[outcome>=1], fig=None,
-                                                      title=title,
-                                                      plot='scatter',
-                                                      plot_num=plot_num,
-                                                      px_edu=px_edu,
-                                                      control_dna_gates=control_dna_gates,
-                                                      control_edu_gates=control_edu_gates,
-                                                      fudge_gates=np.array(fudge_gates))
-    
-    if dfm_ord is not None:
-        gates['well'] = well
-        gates['cell_line'] = cell_line
+    try:   
+        fractions, cell_identity, gates = cc.plot_summary(dna[outcome>=1], edu[outcome>=1], fig=None,
+                                                          title=title,
+                                                          plot='scatter',
+                                                          plot_num=plot_num,
+                                                          px_edu=px_edu,
+                                                          control_dna_gates=control_dna_gates,
+                                                          control_edu_gates=control_edu_gates,
+                                                          fudge_gates=np.array(fudge_gates))
+    except ValueError:
+        fractions = {}
+        gates = {}
+        cell_identity = np.array([0]*len(dna[outcome>=1]))
+        
 
     # Revise phases based on pH3
     if ph3_channel:
@@ -340,6 +346,11 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
         fractions['cell_count__dead'] = d
     fractions['well'] = well
     fractions['cell_count__total'] = len(dna)
+
+    if dfm_ord is not None:
+        gates['well'] = well
+        gates['cell_line'] = cell_line
+
 
     return fractions, gates, cell_identity
 
