@@ -34,17 +34,22 @@ import mock
 MOCK_MODULES = [ 'pandas', 'pygraphviz', 'sympy',  'sympy.core', 'sympy.parsing',
                  'sympy.parsing.sympy_parser',
                  'sympy.printing', 'sympy.printing.mathml',
-                 'sympy.printing.lambdarepr', 'numpy', 'peakutils', 'seaborn'
-                 'scipy', 'scipy.integrate', 'scipy.constants', 'scipy.sparse',
+                 'sympy.printing.lambdarepr', 'numpy', 'peakutils', 'seaborn', 'scipy.stats',
+                 'mpl_toolkits', 'scipy.stats.mstats', 'mpl_toolkits.mplot3d',
+                 'matplotlib.gridspec', 'scipy.ndimage.filters', 'matplotlib.collections',
+                 'scipy', 'scipy.integrate', 'scipy.constants', 'scipy.sparse', 'scipy.spatial.distance',
+                 'scipy.ndimage', 'scipy.ndimage.morphology', 'ipywidgets', 'IPython', 'IPython.display',
                  'h5py', 'theano', 'theano.tensor', 'dateutil',
                  'dateutil.parser', 'networkx', 'networkx.algorithms',
                  'networkx.algorithms.isomorphism',
                  'networkx.algorithms.isomorphism.vf2userfunc',
                  'nose', 'nose.tools', 'matplotlib', 'matplotlib.pyplot',
+                 'matplotlib.backends.backend_pdf', 'matplotlib.widgets',
                  'concurrent', 'concurrent.futures' ]
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.MagicMock()
 sys.modules['sympy'].Symbol = type('Symbol', (object,), {})
+
 
 # -- General configuration ---------------------------------------------------
 
