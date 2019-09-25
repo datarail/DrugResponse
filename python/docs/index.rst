@@ -15,7 +15,7 @@ data as input and automatically classifies cells into live or dead and further c
 
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
 
    license.rst
    installation.rst
