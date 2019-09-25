@@ -41,7 +41,7 @@ MOCK_MODULES = [ 'pandas', 'pygraphviz', 'sympy',  'sympy.core', 'sympy.parsing'
                  'scipy.ndimage', 'scipy.ndimage.morphology', 'ipywidgets', 'IPython', 'IPython.display',
                  'h5py', 'theano', 'theano.tensor', 'dateutil',
                  'dateutil.parser', 'networkx', 'networkx.algorithms',
-                 'backends.backend_pdf', 'spatial.distance',
+                 'matplotlib.backends', 'scipy.spatial',
                  'networkx.algorithms.isomorphism',
                  'PdfPages', 'pdist', 'squareform',
                  'networkx.algorithms.isomorphism.vf2userfunc',
