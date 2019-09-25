@@ -14,8 +14,8 @@ matplotlib.rcParams['ps.fonttype'] = 42
 def compute_log_ph3(ph3, x_ph3=None):
     """Compute log of pH3 intensities
 
-    Parameter
-    ---------
+    Parameters
+    ----------
     ph3 : 1d array
        ph3 intensities across all cells in a well
     x_ph3 : 1d array
@@ -26,8 +26,13 @@ def compute_log_ph3(ph3, x_ph3=None):
     log_ph3 : 1d array
        log pf pH3 intensities across all cells in a well
     """
+    if ph3.min() <= 0:
+        ph3 += np.abs(ph3.min())
     if x_ph3 is None:
-        x_ph3 = np.arange(2.5, 8, 0.02)
+        #x_ph3 = np.arange(2.5, 8, 0.02)
+        ph3_min = np.max((0, np.log10(ph3.min()+0.1) - 0.1))
+        ph3_max = np.log10(ph3.max()) + 0.1
+        x_ph3 = np.arange(ph3_min, ph3_max, 0.02)
     ph3_upper_bound = 10 ** x_ph3[-3]
     ph3_lower_bound = 10 ** x_ph3[2]
     ph3_upper_bounded = [d if d < ph3_upper_bound else ph3_upper_bound
@@ -41,8 +46,8 @@ def compute_log_ph3(ph3, x_ph3=None):
 def get_ph3_gates(ph3, cell_identity, x_ph3=None, ph3_cutoff=None):
     """Gating based on pH3 intensities
     
-    Parameter
-    ---------
+    Parameters
+    ----------
     ph3 : 1d array
        ph3 intensities across all cells in a well
     cell_identitity : 1d array

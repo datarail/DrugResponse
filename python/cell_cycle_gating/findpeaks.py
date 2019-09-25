@@ -8,7 +8,7 @@ def get_prominence_reference_level(signal, peak, peak_loc):
     level of a peaks prominence. Note that prominence is the 
     the length from the reference level upto the peak
 
-    Paramters
+    Parameters
     ---------
     signal : 1D-array
     peak : float
