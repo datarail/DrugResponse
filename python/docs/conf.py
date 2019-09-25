@@ -28,6 +28,23 @@ version = ''
 # The full version, including alpha/beta/rc tags
 release = ''
 
+# -- Mock out some problematic modules-------------------------------------
+import mock
+# Note that for sub-modules, all parent modules must be listed explicitly.
+MOCK_MODULES = [ 'pandas', 'pygraphviz', 'sympy',  'sympy.core', 'sympy.parsing',
+                 'sympy.parsing.sympy_parser',
+                 'sympy.printing', 'sympy.printing.mathml',
+                 'sympy.printing.lambdarepr', 'numpy', 'peakutils', 'seaborn'
+                 'scipy', 'scipy.integrate', 'scipy.constants', 'scipy.sparse',
+                 'h5py', 'theano', 'theano.tensor', 'dateutil',
+                 'dateutil.parser', 'networkx', 'networkx.algorithms',
+                 'networkx.algorithms.isomorphism',
+                 'networkx.algorithms.isomorphism.vf2userfunc',
+                 'nose', 'nose.tools', 'matplotlib', 'matplotlib.pyplot',
+                 'concurrent', 'concurrent.futures' ]
+for mod_name in MOCK_MODULES:
+    sys.modules[mod_name] = mock.MagicMock()
+sys.modules['sympy'].Symbol = type('Symbol', (object,), {})
 
 # -- General configuration ---------------------------------------------------
 
