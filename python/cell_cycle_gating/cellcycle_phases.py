@@ -420,8 +420,8 @@ def plot_2D_peaks(log_dna, x_dna, edu, px_edu,
 def get_phase_candidates(peak_candidates, edu_shift, edu_s_min):
     """Assign cell cycle phases based on candidate peaks
     
-    Parameter
-    --------
+    Parameters
+    ----------
     peak_candidates : ndarray
        3-by-n array of n candidates for G1, S and G2 peaks
     edu_shift : float
@@ -528,11 +528,14 @@ def get_g1_dna_peak(log_dna, x_dna, log_edu, edu_shift,
 
     if len(dna_g1_loc) > 1:
         if phase_candidates[0, 0]:
-            dna_g1_loc = dna_g1_loc[np.argmin(np.abs(
-                dna_g1_loc - phase_candidates[0, 0]))]
+            dna_g1_loc = dna_g1_loc[np.argmin(np.abs(       
+                dna_g1_loc - phase_candidates[0, 0]))]                
         elif phase_candidates[1, 0]:
-            dna_g1_loc = np.max(dna_g1_loc[
-                dna_g1_loc > phase_candidates[1, 0]])
+            try:
+                dna_g1_loc = np.max(dna_g1_loc[
+                    dna_g1_loc > phase_candidates[1, 0]])
+            except ValueError:
+                dna_g1_loc = np.min(dna_g1_loc)
         else:
             dna_g1_loc = np.min(dna_g1_loc)
     if not np.any(dna_g1_loc):
@@ -957,8 +960,9 @@ def get_dna_gates(log_dna, x_dna, dna_g1_loc, dna_g2_loc, dna_cutoff,
     return dna_gates, dna_lims
 
 
-def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna, dna_peaks,
-                              log_edu, edu_gates, px_edu, edu_peaks,
+def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna, 
+                              log_edu, edu_gates, px_edu,
+                              dna_peaks=None, edu_peaks=None,
                               nsmooth=5, ax=None):
     """Evaluates cell cycle phase of each cell based on gatings
 
@@ -1013,24 +1017,27 @@ def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna, dna_peaks,
                           [0.5, 1, 2, 2.1, 3, 3.1]):
         fractions[state] = np.mean(cell_id == (val % 4))
 
-    for ig in np.arange(1, 4):
-        if sum(cell_id == ig) > 10:
-            f_dna = get_kde(log_dna[cell_id == ig], x_dna)
-            _, dna_loc, _ = findpeaks(
-                smooth.smooth(f_dna, 3 * nsmooth).tolist(),
-                npeaks=1)
-            dna_peaks[ig-1] = x_dna[dna_loc]
+    if dna_peaks is not None:
+        for ig in np.arange(1, 4):
+            if sum(cell_id == ig) > 10:
+                f_dna = get_kde(log_dna[cell_id == ig], x_dna)
+                _, dna_loc, _ = findpeaks(
+                    smooth.smooth(f_dna, 3 * nsmooth).tolist(),
+                    npeaks=1)
+                dna_peaks[ig-1] = x_dna[dna_loc]
 
-            f_edu = get_kde(log_edu[cell_id == ig], px_edu)
-            _, edu_loc, _ = findpeaks(
-                smooth.smooth(f_edu, 3 * nsmooth).tolist(),
-                npeaks=1)
-            edu_peaks[ig-1] = px_edu[edu_loc]
-        else:
-            dna_peaks[ig-1] = np.mean(dna_gates[ig-1:2])
-            edu_peaks[ig-1] = np.mean((edu_gates[0], (ig == 2)*edu_gates[1]))
-        edu_peaks[1] = np.max((edu_peaks[1], edu_gates[0] + 0.1))
-    peaks = [dna_peaks, edu_peaks]
+                f_edu = get_kde(log_edu[cell_id == ig], px_edu)
+                _, edu_loc, _ = findpeaks(
+                    smooth.smooth(f_edu, 3 * nsmooth).tolist(),
+                    npeaks=1)
+                edu_peaks[ig-1] = px_edu[edu_loc]
+            else:
+                dna_peaks[ig-1] = np.mean(dna_gates[ig-1:2])
+                edu_peaks[ig-1] = np.mean((edu_gates[0], (ig == 2)*edu_gates[1]))
+            edu_peaks[1] = np.max((edu_peaks[1], edu_gates[0] + 0.1))
+        peaks = [dna_peaks, edu_peaks]
+    else:
+        peaks = None
     if ax is not None:
         ax.pie(fractions.values(), labels=fractions.keys(),  autopct='%1.1f%%')
         ax.axis('equal')
@@ -1091,6 +1098,12 @@ def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
         # print('rel_pos', rel_pos)
         ax4 = plt.subplot2grid(grid_size, rel_pos)
         ax5 = None
+    elif plot is None:
+        ax1=None
+        ax2=None
+        ax3=None
+        ax4=None
+        ax5=None
     if px_edu is None:
         px_edu = np.arange(-0.2, 5.3, .02)
     if x_dna is None:
@@ -1105,38 +1118,59 @@ def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
     g = smooth_1d(h, 5)
     f = smooth_1d(g.T, 5).T
 
-    peak_candidates = iterate_2D_peak(h, x_dna, px_edu, nsmooth=5)
-    phase_candidates = get_phase_candidates(peak_candidates,
-                                            edu_shift, edu_s_min)
+    try:
+        
+        peak_candidates = iterate_2D_peak(h, x_dna, px_edu, nsmooth=5)
+        phase_candidates = get_phase_candidates(peak_candidates,
+                                                edu_shift, edu_s_min)
+        
+        dna_g1_loc = get_g1_dna_peak(log_dna, x_dna, log_edu, edu_shift,
+                                     edu_s_min, edu_g1_max,
+                                     phase_candidates, ax=ax2)
 
-    dna_g1_loc = get_g1_dna_peak(log_dna, x_dna, log_edu, edu_shift,
-                                 edu_s_min, edu_g1_max,
-                                 phase_candidates, ax=ax2)
+        low_edu_peaks = get_low_edu_peaks(log_edu, px_edu, edu_shift,
+                                          edu_g1_max,
+                                          log_dna, dna_g1_loc, nsmooth=5)
+        edu_peaks, edu_cutoff, edu_lims, edu_gates = get_high_edu_peaks(log_edu,
+                                                                        px_edu,
+                                                                        edu_shift,
+                                                                        low_edu_peaks,
+                                                                        log_dna,
+                                                                        dna_g1_loc,
+                                                                        nsmooth=5)
 
-    low_edu_peaks = get_low_edu_peaks(log_edu, px_edu, edu_shift,
-                                      edu_g1_max,
-                                      log_dna, dna_g1_loc, nsmooth=5)
-    edu_peaks, edu_cutoff, edu_lims, edu_gates = get_high_edu_peaks(log_edu,
-                                                                    px_edu,
-                                                                    edu_shift,
-                                                                    low_edu_peaks,
-                                                                    log_dna,
-                                                                    dna_g1_loc,
-                                                                    nsmooth=5)
+        dna_s_loc = get_s_phase_dna_loc(log_dna, x_dna, dna_g1_loc,
+                                        log_edu, edu_cutoff, ax=ax2)
+
+        dna_cutoff, dna_g2_loc = get_dna_cutoff(log_dna, x_dna, log_edu,
+                                                edu_cutoff, dna_g1_loc,
+                                                dna_s_loc,  # dna_fig,
+                                                phase_candidates, 5, ax=ax2)
+        dna_gates, dna_lims = get_dna_gates(log_dna, x_dna, dna_g1_loc, dna_g2_loc,
+                                            dna_cutoff, log_edu, edu_cutoff)
+
+        dna_peaks = [dna_g1_loc, dna_s_loc, dna_g2_loc]
+        edu_peaks = edu_peaks + [edu_peaks[0]]
+
+        if ax3 is not None:
+            plot_2D_peaks(log_dna, x_dna, edu, px_edu,
+                          f, peak_candidates, phase_candidates,
+                          dna_gates, dna_lims,
+                          edu_gates, edu_lims,
+                          nsmooth=5, ax=ax3)
+
+    except ValueError:
+        edu_gates = np.array([0.0, 0.0])
+        edu_lims = [0, 4]
+        dna_gates = np.array([0.0]*4)
+        dna_lims = [3.8, 5.2]
+        dna_peaks=None
+        edu_peaks=None
+
     if control_edu_gates is not None:
         edu_gates = control_override(control_edu_gates, edu_gates, 0.2)
     gates['edu_gates'] = edu_gates
     gates['edu_lims'] = edu_lims
-
-    dna_s_loc = get_s_phase_dna_loc(log_dna, x_dna, dna_g1_loc,
-                                    log_edu, edu_cutoff, ax=ax2)
-
-    dna_cutoff, dna_g2_loc = get_dna_cutoff(log_dna, x_dna, log_edu,
-                                            edu_cutoff, dna_g1_loc,
-                                            dna_s_loc,  # dna_fig,
-                                            phase_candidates, 5, ax=ax2)
-    dna_gates, dna_lims = get_dna_gates(log_dna, x_dna, dna_g1_loc, dna_g2_loc,
-                                        dna_cutoff, log_edu, edu_cutoff)
 
     if control_dna_gates is not None:
         dna_gates = control_override(control_dna_gates, dna_gates, 0.1)
@@ -1155,15 +1189,9 @@ def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
                   for i in [0, 1, np.nan, 0, 1, np.nan, 0, 1, np.nan, 0, 1]],
                  '--', color='red')
         ax2.set_xlim(dna_lims)
+        
 
-    dna_peaks = [dna_g1_loc, dna_s_loc, dna_g2_loc]
-    edu_peaks = edu_peaks + [edu_peaks[0]]
 
-    plot_2D_peaks(log_dna, x_dna, edu, px_edu,
-                  f, peak_candidates, phase_candidates,
-                  dna_gates, dna_lims,
-                  edu_gates, edu_lims,
-                  nsmooth=5, ax=ax3)
 
     plot_edu_dna_scatter(dna, edu, offset_edu,
                          dna_gates, edu_gates,
@@ -1172,11 +1200,13 @@ def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
                          ax=ax4)
 
     fractions, cell_id, peaks = evaluate_cell_cycle_phase(log_dna, dna_gates,
-                                                          x_dna, dna_peaks,
+                                                          x_dna, 
                                                           log_edu, edu_gates,
-                                                          px_edu, edu_peaks,
+                                                          px_edu,
+                                                          dna_peaks, edu_peaks,
                                                           nsmooth=5, ax=ax5)
-    ax4.set_title(title, fontsize=6)
+    if ax4 is not None:
+        ax4.set_title(title, fontsize=6)
     if plot == 'all':
         fig.tight_layout()
         fig.set_size_inches(w=10, h=6)
