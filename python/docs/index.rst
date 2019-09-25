@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Documentation for automated cell cycle gating
-=============================================
+Documentation for automated cell cycle gating (:py:mod:`cell_cycle_gating`)
+===========================================================================
 
 The Deep Dye Drop assay provides detailed readouts on the cell cycle in addition to the live/dead counts.
 Cells are treated with Hoechst (to stain nuclei) and LIVE/DEAD Red (LDR, to stain dead cells) dyes in multi-well plates.
