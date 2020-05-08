@@ -6,8 +6,8 @@ Getting started
 .. |eyes| replace::
 
 
-Quickstart
-----------
+Working with data generated from Columbus
+-----------------------------------------
 
  - Object level data for a given well is saved as a ``.txt`` file. The data for all wells in a given plate is saved in a folder. The name of the folder typically takes the form ``abcdef[123]``. The ``abcdef`` prefix in the folder name should correspond to the barcode assigned to the plate.
  - ``cd`` into the directory that contains the object level data folders.
@@ -17,7 +17,7 @@ Quickstart
 
    from cell_cycle_gating import run_cell_cycle_gating as rccg
 	
-   obj = 'abcdef[123]' # Name of object level folder
+   obj_folder = 'abcdef[123]' # Name of object level folder
 	
    # Map user defined channel names to standarized names required by the script
    ndict = {'Nuclei Selected - EdUINT': 'edu',
@@ -26,17 +26,40 @@ Quickstart
 	    'Nuclei Selected - pH3INT': 'ph3'}
 
    # Run gating script	
-   dfs = rccg.run(obj, ndict)
+   dfs = rccg.run(obj_folder, ndict)
 
 - The dataframe ``dfs`` returns well-level summary of number of live/dead cells and fraction of cells in each phase of the cell cycle.
 - The script saves a pdf showing the gating on each DNA v EDU scatter plot for review. By default the pdf file uses the name of the folder as the file name `i.e` ``summary_abcdef[123].pdf``
 - The dataframe df is also saved as a .csv file with the same name as the object level folder `i.e` ``summary_abdef[123].csv``
+  
+
+Working with data generated from IXM
+------------------------------------
+
+- The standard column names generated in  Metaexpress differ from the Operetta. Please update ``ndict`` as below and add an additional argument to ``rccg.run()``. Further, the entire dataset for a given plate is saved as a single .txt file instead of seperate files per well in a folder. See below:
+
+  
+::
+
+   from cell_cycle_gating import run_cell_cycle_gating as rccg
+	
+   obj_file = 'filename.txt' # Name of object level file
+   
+
+   # Map user defined channel names to standarized names required by the script
+   ndict = {'Well Name' : 'well',
+            'Cell: EdUrawINT (DDD-bckgrnd)' : 'edu',
+            'Cell: LDRrawINT (DDD-bckgrnd)' : 'ldr',
+            'Cell: DNAcontent (DDD-bckgrnd)' : 'dna'}
+
+   # Run gating script	
+   dfs = rccg.run(obj_file, ndict, system='ixm', header=7)
 
 
 Merging metadata information to output
 --------------------------------------
 
-If you have (and you should have |eyes|) well level metadata that maps each well to sample conditions, then the above code block can be modified as follows:
+If you have well level metadata that maps each well to sample conditions, then the above code block can be modified as follows:
 
 ::
 
