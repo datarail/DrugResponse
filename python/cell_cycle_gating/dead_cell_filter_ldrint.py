@@ -372,7 +372,8 @@ def get_counts(batch, filename, ndict, ldr_control_cutoff=2):
     df = pd.read_table("%s/%s" % (batch, filename))
     barcode = batch.split('[')[0]
     df = df.rename(columns=ndict)
-    ldrint = df['Nuclei Selected - LDRINT']
+    #ldrint = df['Nuclei Selected - LDRINT']
+    ldrint = df['ldrint']
     ldr_gates, ldr_lims = get_ldrgates(ldrint, ldr_control_cutoff)
     logint = np.log10(ldrint)
     logint[np.isnan(logint)] = -10 
