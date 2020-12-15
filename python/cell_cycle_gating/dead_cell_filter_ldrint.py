@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 
 
-def get_ldrgates(ldrint, ldr_control_cutoff=2):
+def get_ldrgates(ldrint, ldr_control_cutoff=2, peak_loc=1.5):
     """Gating based on ldr intensities
 
     Parameters
@@ -34,13 +34,14 @@ def get_ldrgates(ldrint, ldr_control_cutoff=2):
     """
     logint = np.log10(ldrint)
     logint = logint[~np.isnan(logint)]
+    logint = logint[~np.isinf(logint)]
     fig, ax = plt.subplots()
     x, y = sns.kdeplot(logint, ax=ax).get_lines()[0].get_data()
     plt.close()
     peak_locs, _ = find_peaks(-y)
     cc = x[peak_locs]
     try:
-        ldr_cutoff = cc[cc > 1][0]
+        ldr_cutoff = cc[cc > peak_locs][0]
     except IndexError:
         ldr_cutoff = ldr_control_cutoff
     ldr_gates = np.array([-np.inf, ldr_cutoff])
@@ -415,3 +416,26 @@ def batch_run(batch, ndict):
     return(dfc)
 
                
+def get_ldr_peak_val(ldrint):
+    #ldrint = df['ldrint']
+    logint = np.log10(ldrint)
+    logint = logint[~np.isnan(logint)]
+    fig, ax = plt.subplots()
+    x, y = sns.kdeplot(logint, ax=ax).get_lines()[0].get_data()
+    plt.close()
+    peak_locs, _ = find_peaks(y)
+    max_loc = np.argmax(y[peak_locs])
+    peak_val = x[peak_locs][max_loc]
+    return(peak_val)
+                       
+
+def summary_peak_val(batch, ndict):
+    files = [s for s in os.listdir(batch) if s.endswith('Nuclei Selected[0].txt')]
+    dfl = []
+    for f in files:
+        dfl.append(get_ldr_peak_val(batch, f, ndict))
+    dfc = pd.concat(dfl)
+    dfc.index = range(len(dfc))
+    return(dfc)
+
+    
