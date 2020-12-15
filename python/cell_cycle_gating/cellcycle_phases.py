@@ -17,6 +17,35 @@ from scipy.spatial.distance import pdist, squareform
 from scipy.stats import norm
 import matplotlib.gridspec as gridspec
 from scipy.ndimage.morphology import generate_binary_structure
+import seaborn as sns
+from scipy.signal import find_peaks
+
+
+def edu_sns_gates(edu):
+    edu = edu[edu > 0]
+    logedu = np.log10(edu)
+    fig, ax = plt.subplots()
+    x, y = sns.kdeplot(logedu, ax=ax).get_lines()[0].get_data()
+    plt.close()
+    ext = np.quantile(-y, 0.95)
+    negy = -y
+    xx = x[negy < ext]
+    negy = negy[negy < ext]
+    peak_locs, _ = find_peaks(negy)
+
+    xmin = np.where(xx >1)[0][0]
+    peak_locs = peak_locs[peak_locs > xmin]
+    
+    cc = xx[peak_locs[y[peak_locs] < 1]]
+    try:
+        #cutoff = np.max(cc[cc > 2])
+        cutoff = cc[cc > 2][0]
+    except ValueError:
+        cutoff = np.quantile(logedu, 0.99)
+    except IndexError:
+        cutoff = np.quantile(logedu, 0.99)
+    edu_gates = np.array([cutoff, np.max(logedu)])
+    return(edu_gates)
 
 
 def get_edu_gates(edu, px_edu=None, ax=None):
@@ -1131,13 +1160,14 @@ def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
         low_edu_peaks = get_low_edu_peaks(log_edu, px_edu, edu_shift,
                                           edu_g1_max,
                                           log_dna, dna_g1_loc, nsmooth=5)
-        edu_peaks, edu_cutoff, edu_lims, edu_gates = get_high_edu_peaks(log_edu,
-                                                                        px_edu,
-                                                                        edu_shift,
-                                                                        low_edu_peaks,
-                                                                        log_dna,
-                                                                        dna_g1_loc,
-                                                                        nsmooth=5)
+        edu_peaks, edu_cutoff, edu_lims, _ = get_high_edu_peaks(log_edu,
+                                                                px_edu,
+                                                                edu_shift,
+                                                                low_edu_peaks,
+                                                                log_dna,
+                                                                dna_g1_loc,
+                                                                nsmooth=5)
+        edu_gates = edu_sns_gates(edu)
 
         dna_s_loc = get_s_phase_dna_loc(log_dna, x_dna, dna_g1_loc,
                                         log_edu, edu_cutoff, ax=ax2)
