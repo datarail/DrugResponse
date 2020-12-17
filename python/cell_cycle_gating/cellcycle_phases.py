@@ -37,15 +37,30 @@ def edu_sns_gates(edu):
     peak_locs = peak_locs[peak_locs > xmin]
     
     cc = xx[peak_locs[y[peak_locs] < 1]]
+    peak_val = get_edu_peak_val(edu)
     try:
-        #cutoff = np.max(cc[cc > 2])
-        cutoff = cc[cc > 2][0]
+        #cutoff = np.max(cc[cc > peak_cal])
+        cutoff = cc[cc > peak_val][0]
     except ValueError:
         cutoff = np.quantile(logedu, 0.99)
     except IndexError:
         cutoff = np.quantile(logedu, 0.99)
     edu_gates = np.array([cutoff, np.max(logedu)])
     return(edu_gates)
+
+
+def get_edu_peak_val(edu):
+    logedu = np.log10(edu)
+    logedu = logedu[~np.isnan(logedu)]
+    logedu = logedu[~np.isinf(logedu)]
+    fig, ax = plt.subplots()
+    x, y = sns.kdeplot(logedu, ax=ax).get_lines()[0].get_data()
+    plt.close()
+    peak_locs, _ = find_peaks(y)
+    max_loc = np.argmax(y[peak_locs])
+    peak_val = x[peak_locs][max_loc]
+    return(peak_val)
+
 
 
 def get_edu_gates(edu, px_edu=None, ax=None):
