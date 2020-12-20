@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 
 
-def get_ldrgates(ldrint, ldr_control_cutoff=2, peak_loc=1.5):
+def get_ldrgates(ldrint, ldr_control_cutoff=2, peak_loc=1.2):
     """Gating based on ldr intensities
 
     Parameters
@@ -32,6 +32,7 @@ def get_ldrgates(ldrint, ldr_control_cutoff=2, peak_loc=1.5):
     ldr_lims : list of floats
         limits of ldr inensity feature that defines x_lims for plots
     """
+    ldrint = ldrint[ldrint > 0]
     logint = np.log10(ldrint)
     logint = logint[~np.isnan(logint)]
     logint = logint[~np.isinf(logint)]
@@ -41,9 +42,10 @@ def get_ldrgates(ldrint, ldr_control_cutoff=2, peak_loc=1.5):
     peak_locs, _ = find_peaks(-y)
     cc = x[peak_locs]
     try:
-        ldr_cutoff = cc[cc > peak_locs][0]
+        ldr_cutoff = cc[cc > peak_loc][0]
     except IndexError:
-        ldr_cutoff = ldr_control_cutoff
+        ldr_cutoff = np.quantile(logint, 0.99)
+        #ldr_cutoff = ldr_control_cutoff
     ldr_gates = np.array([-np.inf, ldr_cutoff])
     ldr_lims = np.array([x.min(), x.max()])
     return ldr_gates, ldr_lims
@@ -418,8 +420,10 @@ def batch_run(batch, ndict):
                
 def get_ldr_peak_val(ldrint):
     #ldrint = df['ldrint']
+    ldrint = ldrint[ldrint > 0]
     logint = np.log10(ldrint)
     logint = logint[~np.isnan(logint)]
+    logint = logint[~np.isinf(logint)]
     fig, ax = plt.subplots()
     x, y = sns.kdeplot(logint, ax=ax).get_lines()[0].get_data()
     plt.close()

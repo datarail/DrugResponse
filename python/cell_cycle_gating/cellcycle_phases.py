@@ -21,7 +21,7 @@ import seaborn as sns
 from scipy.signal import find_peaks
 
 
-def edu_sns_gates(edu):
+def edu_sns_gates(edu, control_edu_cutoff_bounds=None):
     edu = edu[edu > 0]
     logedu = np.log10(edu)
     fig, ax = plt.subplots()
@@ -36,15 +36,24 @@ def edu_sns_gates(edu):
     xmin = np.where(xx >1)[0][0]
     peak_locs = peak_locs[peak_locs > xmin]
     
-    cc = xx[peak_locs[y[peak_locs] < 1]]
-    peak_val = get_edu_peak_val(edu)
-    try:
-        #cutoff = np.max(cc[cc > peak_cal])
-        cutoff = cc[cc > peak_val][0]
-    except ValueError:
-        cutoff = np.quantile(logedu, 0.99)
-    except IndexError:
-        cutoff = np.quantile(logedu, 0.99)
+    cc = xx[peak_locs]#[y[peak_locs] < 1]]
+    #peak_val = get_edu_peak_val(edu)
+    if control_edu_cutoff_bounds:
+        try:
+            cutoff = cc[(cc > control_edu_cutoff_bounds[0]) &
+                (cc < control_edu_cutoff_bounds[1])][0]
+        except ValueError:
+            cutoff = np.quantile(logedu, 0.99)
+        except IndexError:
+            cutoff = np.quantile(logedu, 0.99)
+    else:
+        try:
+            #cutoff = np.max(cc[cc > peak_cal])
+            cutoff = cc[0]
+        except ValueError:
+            cutoff = np.quantile(logedu, 0.99)
+        except IndexError:
+            cutoff = np.quantile(logedu, 0.99)
     edu_gates = np.array([cutoff, np.max(logedu)])
     return(edu_gates)
 
@@ -1091,7 +1100,8 @@ def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna,
 def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
                  title=None, plot='all', plot_num=None,
                  control_dna_gates=None, control_edu_gates=None,
-                 fudge_gates=np.array([0, 0, 0, 0])):
+                 fudge_gates=np.array([0, 0, 0, 0]),
+                 control_edu_cutoff_bounds=None):
     """Summary plots depicting kernel density estimates for EdU and DNA,
     phase candidates and cell cycle fractions
     
@@ -1182,7 +1192,7 @@ def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
                                                                 log_dna,
                                                                 dna_g1_loc,
                                                                 nsmooth=5)
-        edu_gates = edu_sns_gates(edu)
+        edu_gates = edu_sns_gates(edu, control_edu_cutoff_bounds)
 
         dna_s_loc = get_s_phase_dna_loc(log_dna, x_dna, dna_g1_loc,
                                         log_edu, edu_cutoff, ax=ax2)
