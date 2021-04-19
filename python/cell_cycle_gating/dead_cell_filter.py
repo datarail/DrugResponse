@@ -6,9 +6,11 @@ import matplotlib.pyplot as plt
 from cell_cycle_gating import smooth
 from scipy.stats import gaussian_kde
 import matplotlib.gridspec as gridspec
+from scipy.signal import find_peaks
 import matplotlib
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
+import seaborn as sns
 
 
 
@@ -119,8 +121,9 @@ def plot_ldr_gating(ldrtxt, x_ldr=None, ldr_gates=None,
               np.max([ldr_gates[0], np.min(x_ldr)]),
               np.max([ldr_gates[0], np.min(x_ldr)]),
               ldr_gates[1], ldr_gates[1]]
-    y_vals = [np.log10(np.max(f_ldr)) * y for y in [0, 0, 0.5, 0.5, 0]]
-    ax.plot(x_vals, y_vals, 'r')
+    #y_vals = [np.log10(np.max(f_ldr)) * y for y in [0, 0, 0.5, 0.5, 0]]
+    y_vals = [0, 0, max(log_frac), max(log_frac), 0]
+    ax.plot(x_vals, y_vals, 'r', alpha=0.5)
     ax.set_xlim(ldr_lims)
     f_ldr_max = np.log10(np.max(f_ldr)) - np.log10(np.max(f_ldr)/100) + 0.1
     ax.set_ylim([0, f_ldr_max])
@@ -414,7 +417,7 @@ def plot_ldr_dna_scatter(dna, ldrtxt, x_dna=None, x_ldr=None, ax=None):
     ax.set_ylim(ldr_lims)
 
 
-def live_dead(ldrtxt, ldr_gates,
+def live_dead(ldrtxt, ldr_gates=None,
               dna=None, dna_gates=None,
               x_ldr=None, x_dna=None, ax=None):
     """Assign classification to individual cells as live/dead based on
@@ -456,7 +459,8 @@ def live_dead(ldrtxt, ldr_gates,
         mx = np.max(ldrtxt.tolist())+0.01
         x_ldr = np.arange(-0.01, mx, 0.0002)
     outcome = [0] * len(ldrtxt)
-    ldr_gates = get_ldrgates(ldrtxt, x_ldr)
+    if ldr_gates is  None:
+        ldr_gates = get_ldrgates(ldrtxt, x_ldr)
     ldr_outer = (ldrtxt < ldr_gates[0]) | (ldrtxt > ldr_gates[1])
     outcome = [-1 if b else 0 for b in ldr_outer]
     #dead = np.sum([1 for ot in outcome if ot == -1])
@@ -471,7 +475,7 @@ def live_dead(ldrtxt, ldr_gates,
         dna_outermost = (log_dna < dna_gates[0]) | (log_dna > dna_gates[3])
         dead_ldrpos = np.sum(ldr_outer)
         dead_subg1 = np.sum((ldr_outer==False) & (log_dna < dna_gates[0]))
-        alive_supg2 = np.sum((ldr_outer==False) & (log_dna > dna_gates[2]))
+        alive_beyondg2 = np.sum((ldr_outer==False) & (log_dna > dna_gates[2]))
         alive_subg1 = np.sum((ldr_outer==False) & (log_dna > dna_gates[0]) & (log_dna < dna_gates[1]))
         dna_inner = ((log_dna > dna_gates[1]) &
                      (log_dna < dna_gates[2]) &
@@ -484,15 +488,15 @@ def live_dead(ldrtxt, ldr_gates,
                    + (-1 * ((ldr_outer==False) & (log_dna < dna_gates[0]))) # dead very low G1
                    + (1.25 * ((ldr_outer==False) & (log_dna > dna_gates[0]) & (log_dna < dna_gates[1]))) # alive lower than G1
                    + (-2 * ldr_outer)) 
-        cell_fate_dict = {'alive': alive, 'alive_subg1': alive_subg1, 'alive_supg2': alive_supg2,
+        cell_fate_dict = {'alive': alive, 'alive_subg1': alive_subg1, 'alive_beyondg2': alive_beyondg2,
                           'dead_ldrpos': dead_ldrpos, 'dead_subg1': dead_subg1}
         #alive = np.sum([1 for ot in outcome if ot >= 0])
         #dead = np.sum([1 for s in outcome if s == -1])
         #selected = np.sum([1 for s in outcome if s == 1])
         #others = np.sum([1 for s in outcome if s == 0])
         if ax is not None:
-            ax.pie([alive, alive_subg1, alive_supg2, dead_ldrpos, dead_subg1],
-                   labels=['alive', 'alive_subg1', 'alive_supg2', 'dead_ldrpos', 'dead_subg1'],
+            ax.pie([alive, alive_subg1, alive_beyondg2, dead_ldrpos, dead_subg1],
+                   labels=['alive', 'alive_subg1', 'alive_beyondg2', 'dead_ldrpos', 'dead_subg1'],
                    explode=(0.1, 0.1, 0.1, 0.1, 0.1), autopct='%1.1f%%')
             ax.axis('equal')
     else:
@@ -533,3 +537,71 @@ def plot_summary(ldr, dna, x_ldr=None, well=None):
     if well:
         fig.savefig('dead_cell_filter_%s.png' % well, dpi=300)
     return fig
+
+
+def get_ldrgates2(ldrtxt, x_ldr=None):
+    if x_ldr is None:
+        mx = np.max(ldrtxt.tolist())+0.01
+        x_ldr = np.arange(-0.01, mx, 0.0002)
+    f_ldr = get_kde(ldrtxt, x_ldr)
+    peak_locs, _ = find_peaks(-f_ldr)
+    ldr_cutoff = x_ldr[peak_locs[0]]
+    ldr_gates = [-np.inf, ldr_cutoff]
+    return np.array(ldr_gates)
+
+
+def get_ldrintgates2(batch, well, cutoff=None):
+    fl = [s for s in os.listdir(batch)
+          if s.endswith('Nuclei Selected[0].txt')]
+    wl = "result.%s[" % well
+    fls = [s for s in fl if wl in s][0]
+
+    df = pd.read_table("%s/%s" % (batch, fls))
+    ldrint = df['Nuclei Selected - LDRINT']
+    
+    fig, ax = plt.subplots()
+
+    total_cells = len(ldrint)
+    logint = np.log10(ldrint)
+    logint = logint[~np.isnan(logint)]
+    x, y = sns.kdeplot(logint, ax=ax).get_lines()[0].get_data()
+    #plt.close('all')
+    peak_locs, _ = find_peaks(-y)
+    cc = x[peak_locs]
+    if cutoff is None:
+        if len(cc) > 0:
+            try:
+                cutoff = cc[cc>1][0]
+            except IndexError:
+                cutoff = cc[-1]
+            dead_cells = len(logint[logint > cutoff])
+        else:
+            cutoff = np.nan
+            dead_cells = np.nan  
+    ax.vlines(cutoff, 0, 0.2, linestyles='dashed', alpha=0.5)
+    ax.set_title("%s_%s" % (batch, well))
+    return ax, dead_cells, total_cells
+
+def get_ldrintgates(ldrint, cutoff=None):
+    #ldrint = df['Nuclei Selected - LDRINT']    
+    total_cells = len(ldrint)
+    logint = np.log10(ldrint)
+    logint = logint[~np.isnan(logint)]
+    fig, ax = plt.subplots()
+    x, y = sns.kdeplot(logint, ax=ax).get_lines()[0].get_data()
+    plt.close('all')
+    peak_locs, _ = find_peaks(-y)
+    cc = x[peak_locs]
+    if cutoff is None:
+        if len(cc) > 0:
+            try:
+                cutoff = cc[cc>1][0]
+                dead_cells = len(logint[logint > cutoff])
+            except IndexError:
+                cutoff = np.nan
+                dead_cells = np.nan
+        else:
+            cutoff = np.nan
+            dead_cells = np.nan
+    return cutoff, dead_cells, total_cells
+
