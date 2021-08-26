@@ -21,7 +21,8 @@ def run(data, ndict, dfm=None,
         ph3_channel=True, ldr_channel=True,
         px_edu=None, x_ldr=None, control_based_gating=False,
         control_gates=None, fudge_gates=np.array([0, 0, 0, 0]),
-        system=None, header=7, ldr_gates=None):
+        system=None, header=7, ldr_gates=None,
+        nuclei_population_name="Nuclei Selected"):
     """Executes cell cycle gating on all wells for which object level
     data is available in object_level_directory. Plots and saves summary pdf
     of DNA v EdU distribution with automated gatings. A dataframe summarizing
@@ -35,6 +36,9 @@ def run(data, ndict, dfm=None,
         metadata table of experimental design. Default is None.
     ph3_channel : Optional[bool]
                 True if data on pH3 intensity is in object level data.
+    nuclei_population_name : Optional[str]
+        Name of the nuclei "population" in your Harmony analysis protocol. Used
+        to identify which data files to read.
 
     Returns
     -------
@@ -54,13 +58,13 @@ def run(data, ndict, dfm=None,
     if os.path.isdir(data):
         logfile = "logs/%s.log" % data.split('[')[0]        
         if dfm is not None:
-            dfm_ord = merge_metadata(dfm, data)
+            dfm_ord = merge_metadata(dfm, data, nuclei_population_name)
             if control_based_gating:
                 dfm_ord = dfm_ord[dfm_ord.agent == 'DMSO'].copy()
             object_level_data = dfm_ord['object_level_file'].tolist()
         else:
             object_level_data = [s for s in os.listdir(data)
-                                  if 'Nuclei Selected[0].txt' in s]
+                                 if f'{nuclei_population_name}[0].txt' in s]
             dfm_ord=None
     else:
         logfile = "logs/%s.log" % data.split('.txt')[0]
@@ -284,7 +288,6 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
 
     # Get live dead
     if ldr_channel:
-        #ldrint = np.array(df['Nuclei Selected - LDRINT'].tolist())
         ldrint = np.array(df['ldrint'].tolist())
         ldrint = ldrint[cells_notnan]
         logldr_peak = dcf_int.get_ldr_peak_val(ldrint)
@@ -374,7 +377,7 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
     return fractions, gates, cell_identity
 
 
-def merge_metadata(dfm, obj):
+def merge_metadata(dfm, obj, nuclei_population_name):
     """Merges metadata with object level file and
     sorts files by cell line, drug and concetration.
 
@@ -384,6 +387,8 @@ def merge_metadata(dfm, obj):
         metadata file with wells mapped to treatment conditions
     obj : str
         path to folder containing object level data
+    nuclei_population_name : str
+        Name of the nuclei "population" in the Harmony analysis protocol.
 
     Returns
     -------
@@ -401,7 +406,7 @@ def merge_metadata(dfm, obj):
     dfm.index = dfm.well.tolist()
     wells = []
     object_level_files = [s for s in os.listdir(obj)
-                          if 'Nuclei Selected[0].txt' in s]
+                          if f'{nuclei_population_name}[0].txt' in s]
     for file in object_level_files:
         well = re.search('result.(.*?)\[', file).group(1)
         well = "%s%s" % (well[0], well[1:].zfill(2))
