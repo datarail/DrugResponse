@@ -46,8 +46,8 @@ def get_ldrgates(ldrtxt, x_ldr=None):
         trough_loc = peak_loc + (5 * peak_width[0])
 
     # choose LDR cutoff based on half-proximal width and right trough of peak
-    ldrwidth_5x = peak_loc + (5 * peak_width[0])
-    ldrwidth_2p5 = peak_loc + (2.5 * peak_width[0])
+    ldrwidth_5x = peak_loc[0] + (5 * peak_width[0])
+    ldrwidth_2p5 = peak_loc[0] + (2.5 * peak_width[0])
     cutoff_index_1 = len(x_ldr) - 2
     cutoff_index_2 = np.max([3,
                              np.min([trough_loc, ldrwidth_5x]),

@@ -143,7 +143,7 @@ def get_edu_gates(edu, px_edu=None, ax=None):
     # EdU max for G1 gating
     edu_g1_max = np.max((
         np.log10(peak_trough - offset_edu),  # Expected EdU max for G1 (optn 1)
-        quantile(log_edu, 0.2) + 0.1  # Expected EdU max  for G1 (optn 2)
+        quantile(log_edu, 0.2)[0] + 0.1 # Expected EdU max  for G1 (optn 2)
     ))
 
     # Edu  min for S phase gating
