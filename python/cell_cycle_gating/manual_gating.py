@@ -135,7 +135,96 @@ def gating(log_dna, log_edu,
     
     #plt.pie(fractions.values(), labels=fractions.keys())
     plt.show()
+
+
+def ldr_gating(log10_ldr, ldr_cutoff, nbins = 20):
+    fig, ax = plt.subplots()
+    plt.hist(log10_ldr, bins = nbins, rasterized=True)
+    axes = plt.gca()
+    ymin, ymax = axes.get_ylim()
+    l, = plt.plot([ldr_cutoff, ldr_cutoff], ### x gates
+                  [0, ymax], ### y gates
+                  '--',  color='red')
+    plt.xlabel('log10 (LDR)')
+    plt.ylabel('Frequency')
+    plt.xlim((log10_ldr.min(), log10_ldr.max()))
+    plt.show()
+
+def update_ldr_gating(obj, well, ndict,
+                  ldr_channel=True, ph3_channel=True,
+                  x_dna=None, px_edu=None, x_ldr=None, system=None,
+                  remove_ldr_less_eq_zero = True, nbins = 20):
+    if os.path.isdir(obj):
+        obj_file = get_obj_file(obj, well)
+        path2file = "%s/%s" % (obj, obj_file)
+        df = pd.read_table(path2file)
+        df = map_channel_names(df, ndict)
+        well = re.search('result.(.*?)\[', obj_file).group(1)
+        well = "%s%s" % (well[0], well[1:].zfill(2))
+
+    else:
+        dfo = pd.read_table(obj)
+        dfo = dfo.rename(columns=ndict)
+        df = dfo[dfo.well == well].copy()
+        
+    edu = np.array(df['edu'].tolist())
+    dna = np.array(df['dna'].tolist())
+
+    edu_notnan = ~np.isnan(edu)
+    edu = edu[edu_notnan]
+    dna = dna[edu_notnan]
+
+    #if ldr_channel:
+    ldr = np.array(df['ldr'].tolist())
+    ldr = ldr[edu_notnan]
+    if system == 'ixm':
+        x_ldr = np.arange(500, ldr.max(), 100)
+    ldr_gates = dcf.get_ldrgates(ldr, x_ldr)
+    dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
+    cell_fate_dict, outcome = dcf.live_dead(ldr, ldr_gates, dna, dna_gates, x_ldr=x_ldr)
+    live_cols = [s for s in list(cell_fate_dict.keys()) if 'alive' in s]
+    dead_cols = [s for s in list(cell_fate_dict.keys()) if 'dead' in s]
+    a = 0
+    d = 0
+    for col in live_cols:
+        a += cell_fate_dict[col]
+    for col in dead_cols:
+        d += cell_fate_dict[col]
+    #else:
+    #    outcome = np.array([1] * len(dna))
+
+    if ph3_channel:
+        #ph3 = np.array(df['Nuclei Selected - pH3INT'].tolist())
+        ph3 = np.array(df['ph3'].tolist())
+        ph3 = ph3[edu_notnan]
+        ph3 = ph3[outcome>=1]
+
+    if px_edu is None:
+        px_edu = np.arange(-0.2, 5.3, .02)
+    if x_dna is None:
+        x_dna = np.arange(2.5, 8, 0.02)  
+    #log_dna = cc.compute_log_dna(dna[outcome>=1], x_dna)
+    log_dna = cc.compute_log_dna(dna, x_dna)
+    edu_shift, offset_edu, edu_g1_max, edu_s_min = cc.get_edu_gates(edu[outcome>=1], px_edu) 
+    log_edu = cc.compute_log_edu(edu[outcome>=1], px_edu, offset_edu)
+    ldr_pos = ldr[np.where(ldr > 0)]
+    ldr_min = np.min(ldr_pos)
+    if remove_ldr_less_eq_zero: ### remove all ldr <= 0
+        log10_ldr = np.log10(ldr_pos)
+    else:   ### set all ldr <= 0 to smallest positive ldr measured
+        ldr[np.where(ldr <= 0)] = ldr_min
+        log10_ldr = np.log10(ldr)
     
+    y=interactive(ldr_gating,
+                  log10_ldr = fixed(log10_ldr),
+                  ldr_cutoff = ldr_gates[1],
+                  nbins = fixed(nbins)
+                  )
+    for i, child in enumerate(y.children):
+        child.step = 0.05
+        child.min = log10_ldr.min()
+        child.max = log10_ldr.max()
+    return y
 
 def apply_gating(y, obj, well, ndict,
                   ldr_channel=True, ph3_channel=True,
