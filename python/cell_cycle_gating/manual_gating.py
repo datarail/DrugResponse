@@ -42,6 +42,7 @@ def update_gating(obj, well, ndict,
                   ldr_channel=True, ph3_channel=True,
                   x_dna=None, px_edu=None, x_ldr=None, system=None):
     if os.path.isdir(obj):
+        assert system is None, "input path is folder, not ixm data!"
         obj_file = get_obj_file(obj, well)
         path2file = "%s/%s" % (obj, obj_file)
         df = pd.read_table(path2file)
@@ -50,7 +51,8 @@ def update_gating(obj, well, ndict,
         well = "%s%s" % (well[0], well[1:].zfill(2))
 
     else:
-        dfo = pd.read_table(obj)
+        assert system == "ixm", "input path is file, must pass system='ixm'"
+        dfo = pd.read_table(obj, header=7)
         dfo = dfo.rename(columns=ndict)
         df = dfo[dfo.well == well].copy()
         
@@ -230,6 +232,7 @@ def apply_gating(y, obj, well, ndict,
                   ldr_channel=True, ph3_channel=True,
                   x_dna=None, px_edu=None, x_ldr=None, system=None):
     if os.path.isdir(obj):
+        assert system is None, "input path is folder, not ixm data!"
         obj_file = get_obj_file(obj, well)
         path2file = "%s/%s" % (obj, obj_file)
         df = pd.read_table(path2file)
@@ -237,7 +240,8 @@ def apply_gating(y, obj, well, ndict,
         well = re.search('result.(.*?)\[', obj_file).group(1)
         well = "%s%s" % (well[0], well[1:].zfill(2))
     else:
-        dfo = pd.read_table(obj)
+        assert system == "ixm", "input path is file, must pass system='ixm'"
+        dfo = pd.read_table(obj, header=7)
         dfo = dfo.rename(columns=ndict)
         df = dfo[dfo.well == well].copy()
 
