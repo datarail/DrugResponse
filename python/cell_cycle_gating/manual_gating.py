@@ -95,16 +95,29 @@ def update_gating(obj, well, ndict,
     log_dna = cc.compute_log_dna(dna[outcome>=1], x_dna)
     edu_shift, offset_edu, edu_g1_max, edu_s_min = cc.get_edu_gates(edu[outcome>=1], px_edu) 
     log_edu = cc.compute_log_edu(edu[outcome>=1], px_edu, offset_edu)
-
-    y=interactive(gating,
-                  log_dna=fixed(log_dna), 
-                  g1_left= np.median(log_dna)-.25,
-                  g1_right = np.median(log_dna) - 0.15,
-                  g2_left= np.median(log_dna) + 0.15,
-                  g2_right = np.median(log_dna) +.25, 
-                  log_edu = fixed(log_edu),
-                  edu_lower = np.median(log_edu),
-                  edu_upper = np.median(log_edu) + 0.5)
+    
+    if ldr_channel:
+        y=interactive(gating,
+                    log_dna=fixed(log_dna), 
+                    g1_left= dna_gates[0],
+                    g1_right = dna_gates[1],
+                    g2_left= dna_gates[2],
+                    g2_right = dna_gates[3], 
+                    log_edu = fixed(log_edu),
+                    edu_lower = edu_g1_max,
+                    edu_upper = edu_s_min)
+    else:
+        y=interactive(gating,
+                    log_dna=fixed(log_dna), 
+                    g1_left= np.median(log_dna)-.25,
+                    g1_right = np.median(log_dna) - 0.15,
+                    g2_left= np.median(log_dna) + 0.15,
+                    g2_right = np.median(log_dna) +.25, 
+                    log_edu = fixed(log_edu),
+                    #edu_lower = np.median(log_edu),
+                    #edu_upper = np.median(log_edu) + 0.5
+                    edu_lower = edu_g1_max,
+                    edu_upper = edu_s_min)
     for i, child in enumerate(y.children):
         child.step = 0.05
         if i <=3:
@@ -139,6 +152,31 @@ def gating(log_dna, log_edu,
     plt.show()
 
 
+def ldr_gating_with_edu(log_dna, log10_ldr, ldr_cutoff):
+    #dna_gates = [g1_left, g1_right, g2_left, g2_right]
+    #edu_gates = [edu_lower, edu_upper]    
+    xy = np.vstack([log_dna, log10_ldr])
+    z = cc.gaussian_kde(xy)(xy)
+    fig, ax = plt.subplots()
+    plt.subplots_adjust(bottom=0.5)
+    plt.scatter(log_dna, log10_ldr, c=z, s=2, rasterized=True)
+    # l, = plt.plot([dna_gates[i] for i in [0, 0, 3, 3, 0, 0, 1, 1, 0, 2, 2, 3]],
+    #               [-1, edu_gates[1], edu_gates[1], -1,
+    #                np.nan, edu_gates[0], edu_gates[0],
+    #                -1, np.nan, -1, edu_gates[0], edu_gates[0]],
+    #               '--',  color='red')
+    plt.xlabel('log10 (DNA content)')
+    plt.ylabel('log10 (LDR)')
+    plt.xlim((log_dna.min(), log_dna.max()))
+    plt.ylim((log10_ldr.min(), log10_ldr.max()))
+    axes = plt.gca()
+    xmin, xmax = axes.get_xlim()
+    l, = plt.plot([xmin, xmax], ### y gates
+        [ldr_cutoff, ldr_cutoff], ### x gates
+                  '--',  color='red')
+    #plt.pie(fractions.values(), labels=fractions.keys())
+    plt.show()
+    
 def ldr_gating(log10_ldr, ldr_cutoff, nbins = 20):
     fig, ax = plt.subplots()
     plt.hist(log10_ldr, bins = nbins, rasterized=True)
@@ -153,9 +191,12 @@ def ldr_gating(log10_ldr, ldr_cutoff, nbins = 20):
     plt.show()
 
 def update_ldr_gating(obj, well, ndict,
-                  ldr_channel=True, ph3_channel=True,
+                  plot_with_dna = True,
+                  ph3_channel=True,
+                  edu_channel=True,
                   x_dna=None, px_edu=None, x_ldr=None, system=None,
-                  remove_ldr_less_eq_zero = True, nbins = 20):
+                  remove_ldr_less_eq_zero = False, nbins = 20,
+                  is_csv=True):
     if os.path.isdir(obj):
         obj_file = get_obj_file(obj, well)
         path2file = "%s/%s" % (obj, obj_file)
@@ -163,25 +204,36 @@ def update_ldr_gating(obj, well, ndict,
         df = map_channel_names(df, ndict)
         well = re.search('result.(.*?)\[', obj_file).group(1)
         well = "%s%s" % (well[0], well[1:].zfill(2))
-
     else:
-        dfo = pd.read_table(obj)
+        if is_csv:
+            dfo = pd.read_csv(obj)
+        else:
+            dfo = pd.read_table(obj)
         dfo = dfo.rename(columns=ndict)
         df = dfo[dfo.well == well].copy()
         
-    edu = np.array(df['edu'].tolist())
+    
     dna = np.array(df['dna'].tolist())
-
-    edu_notnan = ~np.isnan(edu)
-    edu = edu[edu_notnan]
-    dna = dna[edu_notnan]
-
-    #if ldr_channel:
     ldr = np.array(df['ldr'].tolist())
-    ldr = ldr[edu_notnan]
+    ldr_notnan = ~np.isnan(ldr)
+    ldr_without_nan = ldr[ldr_notnan]
+    ldr[~ldr_notnan] = ldr_without_nan.min()
+    
+    if edu_channel:
+        edu = np.array(df['edu'].tolist())
+        edu_notnan = ~np.isnan(edu)
+        edu = edu[edu_notnan]
+        dna = dna[edu_notnan]
+        ldr = ldr[edu_notnan]
+
+    
+    
     if system == 'ixm':
-        x_ldr = np.arange(500, ldr.max(), 100)
+        ## x_ldr = np.arange(500, ldr.max(), 100) ### original value
+        x_ldr = np.arange(100, ldr.max(), 100) ### new testing value -- NC 06/23
     ldr_gates = dcf.get_ldrgates(ldr, x_ldr)
+    #ldr_gates = dcf.get_ldrgates(ldr)
+    print(ldr_gates)
     dna_gates = dcf.get_dna_gating(dna, ldr, ldr_gates)
     cell_fate_dict, outcome = dcf.live_dead(ldr, ldr_gates, dna, dna_gates, x_ldr=x_ldr)
     live_cols = [s for s in list(cell_fate_dict.keys()) if 'alive' in s]
@@ -192,23 +244,12 @@ def update_ldr_gating(obj, well, ndict,
         a += cell_fate_dict[col]
     for col in dead_cols:
         d += cell_fate_dict[col]
-    #else:
-    #    outcome = np.array([1] * len(dna))
-
-    if ph3_channel:
-        #ph3 = np.array(df['Nuclei Selected - pH3INT'].tolist())
-        ph3 = np.array(df['ph3'].tolist())
-        ph3 = ph3[edu_notnan]
-        ph3 = ph3[outcome>=1]
 
     if px_edu is None:
         px_edu = np.arange(-0.2, 5.3, .02)
     if x_dna is None:
         x_dna = np.arange(2.5, 8, 0.02)  
-    #log_dna = cc.compute_log_dna(dna[outcome>=1], x_dna)
     log_dna = cc.compute_log_dna(dna, x_dna)
-    edu_shift, offset_edu, edu_g1_max, edu_s_min = cc.get_edu_gates(edu[outcome>=1], px_edu) 
-    log_edu = cc.compute_log_edu(edu[outcome>=1], px_edu, offset_edu)
     ldr_pos = ldr[np.where(ldr > 0)]
     ldr_min = np.min(ldr_pos)
     if remove_ldr_less_eq_zero: ### remove all ldr <= 0
@@ -216,10 +257,16 @@ def update_ldr_gating(obj, well, ndict,
     else:   ### set all ldr <= 0 to smallest positive ldr measured
         ldr[np.where(ldr <= 0)] = ldr_min
         log10_ldr = np.log10(ldr)
-    
-    y=interactive(ldr_gating,
+    if plot_with_dna:
+        y=interactive(ldr_gating_with_edu,
+                  log_dna = fixed(log_dna),
                   log10_ldr = fixed(log10_ldr),
-                  ldr_cutoff = ldr_gates[1],
+                  ldr_cutoff = np.log10(ldr_gates[1])
+                  )
+    else:
+        y=interactive(ldr_gating,
+                  log10_ldr = fixed(log10_ldr),
+                  ldr_cutoff = np.log10(ldr_gates[1]),
                   nbins = fixed(nbins)
                   )
     for i, child in enumerate(y.children):
