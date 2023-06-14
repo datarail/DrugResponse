@@ -34,13 +34,15 @@ def get_ldrgates(ldrint, ldr_control_cutoff=2, peak_loc=1.2):
     """
     ldrint = ldrint[ldrint > 0]
     logint = np.log10(ldrint)
-    logint = logint[~np.isnan(logint)]
-    logint = logint[~np.isinf(logint)]
+    logint = logint[ [not x for x in np.isnan(logint)] ]
+    logint = logint[ [not x for x in np.isinf(logint)] ]
     fig, ax = plt.subplots()
     x, y = sns.kdeplot(logint, ax=ax).get_lines()[0].get_data()
     plt.close()
     peak_locs, _ = find_peaks(-y)
+    #print(peak_locs)
     cc = x[peak_locs]
+    #print(cc)
     try:
         ldr_cutoff = cc[cc > peak_loc][0]
     except IndexError:
@@ -275,8 +277,6 @@ def get_dna_gating(dna, ldrint, ldr_gates, x_dna=None, ax=None):
     except ValueError:
         return None
 
-
-
 def live_dead(ldrint, ldr_gates=None,
               dna=None, dna_gates=None,
               x_dna=None, ax=None, ldr_control_cutoff=2):
@@ -369,15 +369,20 @@ def live_dead(ldrint, ldr_gates=None,
 
 
 
-def get_counts(batch, filename, ndict, ldr_control_cutoff=2):
+def get_counts(batch, filename, ndict, ldr_control_cutoff=2, is_csv=False, peak_loc = 1.2):
     well = re.search('result.(.*?)\[', filename).group(1)
     well = "%s%s" % (well[0], well[1:].zfill(2))
-    df = pd.read_table("%s/%s" % (batch, filename))
+    if is_csv:
+        df = pd.read_csv("%s/%s" % (batch, filename))
+    else:
+        df = pd.read_table("%s/%s" % (batch, filename))
     barcode = batch.split('[')[0]
     df = df.rename(columns=ndict)
     #ldrint = df['Nuclei Selected - LDRINT']
-    ldrint = df['ldrint']
-    ldr_gates, ldr_lims = get_ldrgates(ldrint, ldr_control_cutoff)
+    #ldrint = df['ldrint']
+    ldrint = df['ldr']
+    ldr_gates, ldr_lims = get_ldrgates(ldrint, ldr_control_cutoff, peak_loc)
+    print(ldr_gates)
     logint = np.log10(ldrint)
     logint[np.isnan(logint)] = -10 
     ldr_inner = ((ldr_gates[1] >= logint) & (logint >= ldr_gates[0]))
@@ -422,8 +427,8 @@ def get_ldr_peak_val(ldrint):
     #ldrint = df['ldrint']
     ldrint = ldrint[ldrint > 0]
     logint = np.log10(ldrint)
-    logint = logint[~np.isnan(logint)]
-    logint = logint[~np.isinf(logint)]
+    logint = logint[ [not x for x in np.isnan(logint)] ]
+    logint = logint[ [not x for x in np.isinf(logint)] ]
     fig, ax = plt.subplots()
     x, y = sns.kdeplot(logint, ax=ax).get_lines()[0].get_data()
     plt.close()
