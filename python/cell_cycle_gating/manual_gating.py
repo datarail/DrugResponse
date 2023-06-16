@@ -4,6 +4,7 @@ matplotlib.rcParams['ps.fonttype'] = 42
 from matplotlib.widgets import Slider, Button
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 from cell_cycle_gating import cellcycle_phases as cc
 from cell_cycle_gating import dead_cell_filter as dcf
 from cell_cycle_gating import dead_cell_filter_ldrint as dcf_int
@@ -166,7 +167,7 @@ def gating(log_dna, log_edu,
     plt.show()
 
 
-def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, dna_gates=None, plot_ldr_log10=True, is_ldrint=True):
+def plot_ldr_dna_scatter_old(log_dna, log10_ldr, ldr_cutoff, dna_gates=None, plot_ldr_log10=True, is_ldrint=True):
     #dna_gates = [g1_left, g1_right, g2_left, g2_right]
     #edu_gates = [edu_lower, edu_upper]
     raw_ldr = 10**log10_ldr
@@ -207,6 +208,88 @@ def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, dna_gates=None, plot_ld
                     '--',  color='blue')
     #plt.pie(fractions.values(), labels=fractions.keys())
     plt.show()
+
+def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, dna_gates=None, plot_ldr_log10=True, is_ldrint=True):
+    #dna_gates = [g1_left, g1_right, g2_left, g2_right]
+    #edu_gates = [edu_lower, edu_upper]
+    raw_ldr = 10**log10_ldr
+    log10_ldr_cutoff = ldr_cutoff
+    xlab = 'log10 (DNA content)'
+    if not plot_ldr_log10:
+        ldr = raw_ldr
+        ylab = 'LDR'
+        ldr_cutoff = 10**log10_ldr_cutoff
+    else:
+        ldr = log10_ldr
+        ylab = 'log10 (LDR)'
+
+    if dna_gates is None:
+        if is_ldrint:
+            dna_gates = dcf_int.get_dna_gating(10**log_dna, raw_ldr, [-np.inf, log10_ldr_cutoff])
+        else:
+            dna_gates = dcf.get_dna_gating(10**log_dna, raw_ldr, [-np.inf, log10_ldr_cutoff])
+
+    x = log_dna
+    y = ldr
+    xy = np.vstack([x, y])
+    z = cc.gaussian_kde(xy)(xy)
+
+    fig = plt.figure()
+    gs = GridSpec(4,4)
+
+    ax_joint = fig.add_subplot(gs[1:4,0:3])
+
+    plt.scatter(x,y, c=z, s=2, rasterized=True)
+    plt.xlim((x.min(), x.max()))
+    plt.ylim((y.min(), y.max()))
+    # Add dotted lines for gating
+    axes = plt.gca()
+    ymin, ymax = axes.get_ylim()
+    xmin, xmax = axes.get_xlim()
+    l, = plt.plot([xmin, xmax], ### y gates
+        [ldr_cutoff, ldr_cutoff], ### x gates
+                  '--',  color='red')
+    for i in range(4):
+        #print(i)
+        l, = plt.plot([dna_gates[i], dna_gates[i]],
+                    [ymin, ymax],
+                    '--',  color='blue')
+    ##### top marginal histogram
+    ax_marg_x = fig.add_subplot(gs[0,0:3])
+    ax_marg_x.hist(x, bins = 20)
+    # Add dotted lines for gating
+    axes = plt.gca()
+    ymin, ymax = axes.get_ylim()
+    plt.xlim((x.min(), x.max()))
+    for i in range(4):
+        #print(i)
+        l, = plt.plot([dna_gates[i], dna_gates[i]],
+                    [ymin, ymax],
+                    '--',  color='blue')
+    ##### side marginal histogram
+    ax_marg_y = fig.add_subplot(gs[1:4,3])
+    ax_marg_y.hist(y, bins = 20, orientation="horizontal")
+    # Add dotted lines for gating
+    axes = plt.gca()
+    xmin, xmax = axes.get_xlim()
+    plt.ylim((y.min(), y.max()))
+    l, = plt.plot([xmin, xmax], ### y gates
+        [ldr_cutoff, ldr_cutoff], ### x gates
+                  '--',  color='red')
+
+    # Turn off tick labels on marginals
+    plt.setp(ax_marg_x.get_xticklabels(), visible=False)
+    plt.setp(ax_marg_y.get_yticklabels(), visible=False)
+
+    # Set labels on joint
+    ax_joint.set_xlabel(xlab)
+    ax_joint.set_ylabel(ylab)
+
+    # Set labels on marginals
+    #ax_marg_y.set_xlabel('Marginal x label')
+    #ax_marg_x.set_ylabel('Marginal y label')
+    plt.show()
+
     
 def ldr_gating(log10_ldr, ldr_cutoff, nbins = 20):
     fig, ax = plt.subplots()
