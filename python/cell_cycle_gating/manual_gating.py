@@ -44,6 +44,7 @@ def update_gating(obj, well, ndict,
                   ldr_channel=True, ph3_channel=True,
                   x_dna=None, px_edu=None, x_ldr=None, system=None,
                   is_ldrint = False,
+                  calc_edu = False,
                   is_csv=False):
     if os.path.isdir(obj):
         assert system is None, "input path is folder, not ixm data!"
@@ -63,7 +64,10 @@ def update_gating(obj, well, ndict,
                 dfo = pd.read_table(obj)
         dfo = dfo.rename(columns=ndict)
         df = dfo[dfo.well == well].copy()
-        
+    ### calculate edu if needed (raw - background)
+    if calc_edu:
+        df['edu'] = df['edu_raw'] - df['edu_bg']
+    
     edu = np.array(df['edu'].tolist())
     dna = np.array(df['dna'].tolist())
 
