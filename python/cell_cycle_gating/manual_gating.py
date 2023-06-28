@@ -213,7 +213,7 @@ def plot_ldr_dna_scatter_old(log_dna, log10_ldr, ldr_cutoff, dna_gates=None, plo
     #plt.pie(fractions.values(), labels=fractions.keys())
     plt.show()
 
-def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, dna_gates=None, plot_ldr_log10=True, is_ldrint=True):
+def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, dna_gates=None, plot_ldr_log10=True, is_ldrint=True, show_fig = True):
     #dna_gates = [g1_left, g1_right, g2_left, g2_right]
     #edu_gates = [edu_lower, edu_upper]
     raw_ldr = 10**log10_ldr
@@ -292,7 +292,9 @@ def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, dna_gates=None, plot_ld
     # Set labels on marginals
     #ax_marg_y.set_xlabel('Marginal x label')
     #ax_marg_x.set_ylabel('Marginal y label')
-    plt.show()
+    if show_fig: plt.show()
+    return(fig)
+        
 
     
 def ldr_gating(log10_ldr, ldr_cutoff, nbins = 20):
