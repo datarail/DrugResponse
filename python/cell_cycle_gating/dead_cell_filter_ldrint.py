@@ -383,6 +383,7 @@ def get_counts(batch, filename, ndict, ldr_control_cutoff=2, is_csv=False, peak_
     ldrint = df['ldr']
     ldr_gates, ldr_lims = get_ldrgates(ldrint, ldr_control_cutoff, peak_loc)
     print(ldr_gates)
+    ldrint[ldrint < 0] = float('nan')
     logint = np.log10(ldrint)
     logint[np.isnan(logint)] = -10 
     ldr_inner = ((ldr_gates[1] >= logint) & (logint >= ldr_gates[0]))
@@ -410,6 +411,40 @@ def get_counts(batch, filename, ndict, ldr_control_cutoff=2, is_csv=False, peak_
     dfs['cell_count'] = a
     dfs['cell_count__dead'] = d
     dfs['cell_count__total'] = len(ldrint)
+    return(dfs)
+
+def get_counts_df(df, barcode, well, ldr_control_cutoff=2, peak_loc=1.2):
+    ldrint = df['ldr'].copy()
+    ldr_gates, ldr_lims = get_ldrgates(ldrint, ldr_control_cutoff, peak_loc)
+    ldrint[ldrint < 0] = float('nan')
+    logint = np.log10(ldrint)
+    logint[np.isnan(logint)] = -10 
+    ldr_inner = ((ldr_gates[1] >= logint) & (logint >= ldr_gates[0]))
+    if np.sum(ldr_inner) < 50:
+        dna = None
+        dna_gates=None
+    else:
+        dna = df['dna'].copy()
+        dna_gates = get_dna_gating(dna, ldrint, ldr_gates)
+        if dna_gates is None:
+            dna=None
+    cell_fate_dict, outcome = live_dead(ldrint, ldr_gates=ldr_gates, dna=dna, dna_gates= dna_gates,
+                                        ldr_control_cutoff=ldr_control_cutoff)
+    live_cols = [s for s in list(cell_fate_dict.keys()) if 'alive' in s]
+    dead_cols = [s for s in list(cell_fate_dict.keys()) if 'dead' in s]
+    a = 0
+    d = 0
+    for col in live_cols:
+        a += cell_fate_dict[col]
+    for col in dead_cols:
+        d += cell_fate_dict[col]
+    dfs = pd.DataFrame(cell_fate_dict, index=[0])
+    dfs.insert(0, 'barcode',  barcode)
+    dfs.insert(1, 'well',  well)
+    dfs['cell_count'] = a
+    dfs['cell_count__dead'] = d
+    dfs['cell_count__total'] = len(ldrint)
+    dfs['ldr_cutoff'] = ldr_gates[1]
     return(dfs)
 
 

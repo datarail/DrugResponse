@@ -5,6 +5,7 @@ from matplotlib.widgets import Slider, Button
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
+from matplotlib.gridspec import GridSpecFromSubplotSpec
 from cell_cycle_gating import cellcycle_phases as cc
 from cell_cycle_gating import dead_cell_filter as dcf
 from cell_cycle_gating import dead_cell_filter_ldrint as dcf_int
@@ -213,7 +214,7 @@ def plot_ldr_dna_scatter_old(log_dna, log10_ldr, ldr_cutoff, dna_gates=None, plo
     #plt.pie(fractions.values(), labels=fractions.keys())
     plt.show()
 
-def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, dna_gates=None, plot_ldr_log10=True, is_ldrint=True, show_fig = True):
+def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, fig=None, outer=None, i=None, dna_gates=None, plot_ldr_log10=True, is_ldrint=True, show_fig = False, title = "", titlesize=10):
     #dna_gates = [g1_left, g1_right, g2_left, g2_right]
     #edu_gates = [edu_lower, edu_upper]
     raw_ldr = 10**log10_ldr
@@ -238,8 +239,11 @@ def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, dna_gates=None, plot_ld
     xy = np.vstack([x, y])
     z = cc.gaussian_kde(xy)(xy)
 
-    fig = plt.figure()
-    gs = GridSpec(4,4)
+    if fig is None:
+        fig = plt.figure()
+        gs = GridSpec(4,4)
+    else:
+        gs = GridSpecFromSubplotSpec(4,4,subplot_spec=outer[i])
 
     ax_joint = fig.add_subplot(gs[1:4,0:3])
 
@@ -292,6 +296,11 @@ def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, dna_gates=None, plot_ld
     # Set labels on marginals
     #ax_marg_y.set_xlabel('Marginal x label')
     #ax_marg_x.set_ylabel('Marginal y label')
+
+    # Set a title
+    #ax_marg_x.title.set_text(title)
+    ax_marg_x.set_title(title, fontsize=titlesize)
+    
     if show_fig: plt.show()
     return(fig)
         
