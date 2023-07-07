@@ -214,7 +214,8 @@ def plot_ldr_dna_scatter_old(log_dna, log10_ldr, ldr_cutoff, dna_gates=None, plo
     #plt.pie(fractions.values(), labels=fractions.keys())
     plt.show()
 
-def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, fig=None, outer=None, i=None, dna_gates=None, plot_ldr_log10=True, is_ldrint=True, show_fig = False, title = "", titlesize=10):
+
+def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, fig=None, outer=None, i=None, dna_gates=None, plot_ldr_log10=True, is_ldrint=True, show_fig = False, title = "", titlesize=10, y_lims = None, x_lims = None):
     #dna_gates = [g1_left, g1_right, g2_left, g2_right]
     #edu_gates = [edu_lower, edu_upper]
     raw_ldr = 10**log10_ldr
@@ -248,12 +249,21 @@ def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, fig=None, outer=None, i
     ax_joint = fig.add_subplot(gs[1:4,0:3])
 
     plt.scatter(x,y, c=z, s=2, rasterized=True)
-    plt.xlim((x.min(), x.max()))
-    plt.ylim((y.min(), y.max()))
+
+    if x_lims is None:
+        plt.xlim((x.min(), x.max()))
+    else:
+        plt.xlim(x_lims)
+    if y_lims is None:
+        plt.ylim((y.min(), y.max()))
+    else:
+        plt.ylim(y_lims)
     # Add dotted lines for gating
     axes = plt.gca()
     ymin, ymax = axes.get_ylim()
     xmin, xmax = axes.get_xlim()
+    y_ticks = np.arange(np.ceil(ymin), np.floor(ymax)+1)
+    plt.yticks(y_ticks)
     l, = plt.plot([xmin, xmax], ### y gates
         [ldr_cutoff, ldr_cutoff], ### x gates
                   '--',  color='red')
