@@ -251,17 +251,19 @@ def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, fig=None, outer=None, i
     plt.scatter(x,y, c=z, s=2, rasterized=True)
 
     if x_lims is None:
-        plt.xlim((x.min(), x.max()))
-    else:
-        plt.xlim(x_lims)
+        x_lims = (x.min(), x.max())
     if y_lims is None:
-        plt.ylim((y.min(), y.max()))
-    else:
-        plt.ylim(y_lims)
+        y_lims = (y.min(), y.max())
+    plt.xlim(x_lims)
+    plt.ylim(y_lims)
     # Add dotted lines for gating
     axes = plt.gca()
     ymin, ymax = axes.get_ylim()
     xmin, xmax = axes.get_xlim()
+    ymin_main=ymin
+    ymax_main=ymax
+    xmin_main=xmin
+    xmax_main=xmax
     y_ticks = np.arange(np.ceil(ymin), np.floor(ymax)+1)
     plt.yticks(y_ticks)
     l, = plt.plot([xmin, xmax], ### y gates
@@ -278,7 +280,8 @@ def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, fig=None, outer=None, i
     # Add dotted lines for gating
     axes = plt.gca()
     ymin, ymax = axes.get_ylim()
-    plt.xlim((x.min(), x.max()))
+    #plt.xlim((x.min(), x.max()))
+    plt.xlim((xmin_main, xmax_main))
     for i in range(4):
         #print(i)
         l, = plt.plot([dna_gates[i], dna_gates[i]],
@@ -290,7 +293,8 @@ def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, fig=None, outer=None, i
     # Add dotted lines for gating
     axes = plt.gca()
     xmin, xmax = axes.get_xlim()
-    plt.ylim((y.min(), y.max()))
+    #plt.ylim((y.min(), y.max()))
+    plt.ylim((ymin_main, ymax_main))
     l, = plt.plot([xmin, xmax], ### y gates
         [ldr_cutoff, ldr_cutoff], ### x gates
                   '--',  color='red')
