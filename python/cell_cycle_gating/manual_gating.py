@@ -215,7 +215,8 @@ def plot_ldr_dna_scatter_old(log_dna, log10_ldr, ldr_cutoff, dna_gates=None, plo
     plt.show()
 
 
-def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, fig=None, outer=None, i=None, dna_gates=None, plot_ldr_log10=True, is_ldrint=True, show_fig = False, title = "", titlesize=10, y_lims = None, x_lims = None):
+def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, fig=None, outer=None, i=None, dna_gates=None, plot_ldr_log10=True, is_ldrint=True, show_fig = False, title = "", titlesize=10, y_lims = None, x_lims = None,
+                        add_ldr_line=None):
     #dna_gates = [g1_left, g1_right, g2_left, g2_right]
     #edu_gates = [edu_lower, edu_upper]
     raw_ldr = 10**log10_ldr
@@ -269,6 +270,8 @@ def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, fig=None, outer=None, i
     l, = plt.plot([xmin, xmax], ### y gates
         [ldr_cutoff, ldr_cutoff], ### x gates
                   '--',  color='red')
+    if not add_ldr_line is None:
+        plt.axhline(y=add_ldr_line, color='orange', linestyle='--')
     for i in range(4):
         #print(i)
         l, = plt.plot([dna_gates[i], dna_gates[i]],
@@ -298,7 +301,8 @@ def plot_ldr_dna_scatter(log_dna, log10_ldr, ldr_cutoff, fig=None, outer=None, i
     l, = plt.plot([xmin, xmax], ### y gates
         [ldr_cutoff, ldr_cutoff], ### x gates
                   '--',  color='red')
-
+    if not add_ldr_line is None:
+        plt.axhline(y=add_ldr_line, color='orange', linestyle='--')
     # Turn off tick labels on marginals
     plt.setp(ax_marg_x.get_xticklabels(), visible=False)
     plt.setp(ax_marg_y.get_yticklabels(), visible=False)
