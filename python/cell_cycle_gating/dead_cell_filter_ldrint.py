@@ -413,9 +413,13 @@ def get_counts(batch, filename, ndict, ldr_control_cutoff=2, is_csv=False, peak_
     dfs['cell_count__total'] = len(ldrint)
     return(dfs)
 
-def get_counts_df(df, barcode, well, ldr_control_cutoff=2, peak_loc=1.2):
+def get_counts_df(df, barcode, well, ldr_control_cutoff=2, peak_loc=1.2, manual_ldr_cutoff=None):
+    df = df.copy()
     ldrint = df['ldr'].copy()
-    ldr_gates, ldr_lims = get_ldrgates(ldrint, ldr_control_cutoff, peak_loc)
+    if manual_ldr_cutoff is None:
+        ldr_gates, ldr_lims = get_ldrgates(ldrint, ldr_control_cutoff, peak_loc)
+    else:
+        ldr_gates = np.array([-np.inf, manual_ldr_cutoff])
     ldrint[ldrint < 0] = float('nan')
     logint = np.log10(ldrint)
     logint[np.isnan(logint)] = -10 
