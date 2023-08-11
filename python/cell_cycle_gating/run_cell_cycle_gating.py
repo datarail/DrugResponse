@@ -158,8 +158,10 @@ def run(data, ndict, dfm=None,
                                                         fudge_gates=fudge_gates,
                                                         fig=fig, plot_num=i,
                                                         ldr_gates=ldr_gates)
-            df_summary = df_summary.append(fractions, ignore_index=True)
-            df_gates = df_gates.append(gates, ignore_index=True)
+            #df_summary = df_summary.append(fractions, ignore_index=True)
+            #df_gates = df_gates.append(gates, ignore_index=True)
+            df_summary = pd.concat([df_summary, pd.DataFrame([fractions])], ignore_index=True)
+            df_gates = pd.concat([df_gates, pd.DataFrame([gates])], ignore_index=True)
             identity_dict[well] = cell_identity
        
         except ValueError as err:
@@ -179,7 +181,8 @@ def run(data, ndict, dfm=None,
         except ZeroDivisionError as err:
             logging.error("%s in well %s" % (err, well))
             #pass
-        except pd.io.common.EmptyDataError as err:
+        #except pd.io.common.EmptyDataError as err:
+        except pd.errors.EmptyDataError as err:
             logging.error("%s in well %s" % (err, well))
             #pass
         if (i + 1) % nb_plots_per_page == 0 or (i + 1) == nb_plots:
@@ -245,7 +248,8 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
     well = "%s%s" % (well[0], well[1:].zfill(2))
     edu = np.array(df['edu'].tolist())
     dna = np.array(df['dna'].tolist())
-    edu = edu.astype(np.float)
+    #edu = edu.astype(np.float)
+    edu = edu.astype(float)
     #edu[edu < 0] = np.nan
 
     if ph3_channel:
