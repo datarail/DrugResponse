@@ -75,7 +75,8 @@ def run(data, ndict, dfm=None,
             dfm = dfm[dfm.barcode == barcode].copy()
             metadata_wells = dfm.well.unique()
             df_input['well'] = df_input['well'].astype("category")
-            df_input.well.cat.set_categories(metadata_wells, inplace=True)
+            #df_input.well.cat.set_categories(metadata_wells, inplace=True)
+            df_input['well'] = df_input.well.cat.set_categories(metadata_wells)
             df_input = df_input.sort_values(['well'])
             dfm_ord = dfm.sort_values(['cell_line', 'agent', 'concentration'])
             dfm_ord.index = dfm_ord['well']

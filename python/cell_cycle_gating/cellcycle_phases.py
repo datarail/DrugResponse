@@ -341,7 +341,8 @@ def smooth_1d(y, lm=5):
     d1 = np.diff(e, 1).T
     d2 = np.diff(d1.T, 1).T
     p = (lm ** 2) * np.matmul(d2.T, d2) + 2 * lm * np.matmul(d1.T, d1)
-    z = np.linalg.lstsq((e + p), y)
+    #z = np.linalg.lstsq((e + p), y)
+    z = np.linalg.lstsq((e + p), y, rcond=None)
     return z[0]
 
 
@@ -1083,6 +1084,7 @@ def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna,
                 _, edu_loc, _ = findpeaks(
                     smooth.smooth(f_edu, 3 * nsmooth).tolist(),
                     npeaks=1)
+                edu_loc = int(edu_loc)
                 edu_peaks[ig-1] = px_edu[edu_loc]
             else:
                 dna_peaks[ig-1] = np.mean(dna_gates[ig-1:2])
