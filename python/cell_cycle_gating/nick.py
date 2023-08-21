@@ -863,7 +863,7 @@ def kde_plot_wells(barcode, wells, title = "", add_legend=False, smoothing=1, co
             sns.kdeplot(logint, ax=ax, label = well + " " + trt, alpha=0.25, bw_adjust=smoothing).set_title(title)
             ax.legend()
         else:
-            sns.kdeplot(logint, ax=ax, alpha=0.25).set_title(title)
+            sns.kdeplot(logint, ax=ax, alpha=0.25, bw_adjust=smoothing).set_title(title)
         plt.close()
     return(fig)
 
@@ -874,7 +874,7 @@ def get_kde_plot_data_well(barcode, well,smoothing=1):
     ldrint = df['ldr'].copy()
     ldrint[ldrint < 0] = float('nan')
     logint = np.log10(ldrint)
-    x, y = sns.kdeplot(logint, ax=ax, color = "grey", alpha=0.5).get_lines()[0].get_data()
+    x, y = sns.kdeplot(logint, ax=ax, color = "grey", alpha=0.5, bw_adjust=smoothing).get_lines()[0].get_data()
     plt.close()
     return(x,y)
 
@@ -916,7 +916,7 @@ def kde_plot_avg(barcode, cell_line, smoothing=1):
         logint = get_logldrint(barcode, well)
         logint_all.extend(logint)
     #return(logint_all)
-    sns.kdeplot(logint_all, ax=ax, alpha=0.25, smoothing=smoothing).set_title(barcode + " " + cell_line)
+    sns.kdeplot(logint_all, ax=ax, alpha=0.25, bw_adjust=smoothing).set_title(barcode + " " + cell_line)
     plt.close()
     return(fig)
 
@@ -935,7 +935,7 @@ def kde_plot_all_avg(cell_line, n_barcodes=None, smoothing=1):
             logint = get_logldrint(barcode, well)
             logint_all.extend(logint)
         #return(logint_all)
-        sns.kdeplot(logint_all, ax=ax, alpha=0.25, smoothing=smoothing).set_title(cell_line)
+        sns.kdeplot(logint_all, ax=ax, alpha=0.25, bw_adjust=smoothing).set_title(cell_line)
         plt.close()
     return(fig)
 
@@ -964,7 +964,7 @@ def kde_plot_plate(barcode, n_wells = None, output_dir="", filename="test_kde.pd
             for well in wells:
                 logint = get_logldrint(barcode, well)
                 logint_all.extend(logint)
-                sns.kdeplot(logint, ax=ax, alpha=0.25, smoothing=smoothing).set_title(cell_line)
+                sns.kdeplot(logint, ax=ax, alpha=0.25, bw_adjust=smoothing).set_title(cell_line)
                 ldr_gates, ldr_lims = dcf_int.get_ldrgates(np.array([10**x for x in logint]))
                 ldr_cutoff = ldr_gates[1]
                 ldr_cutoffs.append(ldr_cutoff)
@@ -1056,7 +1056,7 @@ def kde_plot_all_plates_cell_line(cell_line, n_wells = None, n_barcodes=None, ou
         for well in wells:
             logint = get_logldrint(barcode, well)
             #logint_all.append(logint)
-            sns.kdeplot(logint, ax=ax, alpha=0.25, smoothing=smoothing).set_title(barcode)
+            sns.kdeplot(logint, ax=ax, alpha=0.25, bw_adjust=smoothing).set_title(barcode)
         #sns.kdeplot(logint_all, ax=ax, color = "red").set_title(cell_line)
         xmin = -2
         xmax = 6
@@ -1391,6 +1391,7 @@ def get_ldrgates_new_well(barcode, well, smoothing=1.1, show=True, first_peak_mi
                           min_prominence=0, min_peak_height=0.02, min_peak_distance=0.5,
                           single_peak_cutoff=3,
                           silent=True, return_peaks_only=False):
+    if len(barcode) in [2,3]: barcode = barcode_from_number(barcode)
     df = read_and_rename_well_data(barcode, well, silent=True)
     ldrint = df['ldr'].copy()
     results = get_ldrgates_new(ldrint, smoothing=smoothing, show=show, silent=silent,
@@ -2014,7 +2015,7 @@ def get_counts_new(barcode, cell_lines=None, plot_wells=True, select = "median",
         ldrint[ldrint < 0] = float('nan')
         logint = np.log10(ldrint)
         logint[np.isnan(logint)] = -10 ### dummy value
-        ldr_inner = ((ldr_gates[1] >= logint) & (logint >= ldr_gates[0]))
+        ldr_inner = ((ldr_gates[1] >= logdna) & (logdna >= ldr_gates[0]))
         if np.sum(ldr_inner) < 50:
             dna = None
             dna_gates = None
@@ -2095,6 +2096,195 @@ def get_counts_all(out_file="lincs_combos_new_counts_2023_08_18", out_dir = "res
     df.reset_index(drop=True, inplace=True)
     df.to_parquet(out_parquet)
     return(df)
+
+def kde_dna_plot_wells(barcode, wells, title = "", add_legend=False, smoothing=1, column = "ldr"):
+    if len(barcode) in [2,3]: barcode = barcode_from_number(barcode)
+    fig, ax = plt.subplots()
+    #ax.set_title(title, fontsize=12)
+    for well in wells:
+        df = read_and_rename_well_data(barcode, well, silent = True)
+        #ldrint = df[column].copy()
+        #ldrint[ldrint < 0] = float('nan')
+        #logdna = np.log10(ldrint)
+        dna = df['dna'].copy()
+        logdna = np.log10(dna)
+        dna_colname = list(set(df['dna_colname']))[0]
+        #x, y = sns.kdeplot(logdna, ax=ax, color = "grey", alpha=0.5).get_lines()[0].get_data()
+        if add_legend:
+            meta_sub=get_well_meta(barcode=barcode, well=well)
+            trt = list(meta_sub.agent1)[0] + " " + list(meta_sub.concentration1_chr)[0] + "; " + list(meta_sub.agent2)[0] + " " + list(meta_sub.concentration2_chr)[0]
+            sns.kdeplot(logdna, ax=ax, label = well + " " + trt, alpha=0.25, bw_adjust=smoothing).set_title(title)
+            ax.legend()
+        else:
+            sns.kdeplot(logdna, ax=ax, alpha=0.25, bw_adjust=smoothing).set_title(title)
+        plt.close()
+    return(fig)
+
+def kde_dna_plot_cell_line(barcode, cell_line, n_wells=None, well_start=0, title = "", 
+                       add_legend=False, smoothing=1, column="ldr"):
+    if len(barcode) in [2,3]: barcode = barcode_from_number(barcode)
+    wells = get_wells(barcode, cell_line)
+    print(wells)
+    if n_wells is not None: wells = wells[well_start:(well_start+n_wells)]
+    if title == "": title = cell_line + " " + barcode
+    fig = kde_dna_plot_wells(barcode, wells, title = title, add_legend=add_legend, 
+                         smoothing=smoothing, column = column)
+    return(fig)
+
+def get_logdna(barcode, well, remove_na=False, return_dna_also=False, return_dna_colname=True):
+    if len(barcode) in [2,3]: barcode = barcode_from_number(barcode)
+    df = read_and_rename_well_data(barcode, well, silent = True)
+    dna_orig = df['dna'].copy()
+    dna = df['dna'].copy()
+    if not remove_na:
+        dna[dna < 0] = float('nan')
+        logdna = np.log10(dna)
+    else:
+        dna = dna[dna > 0]
+        logdna = np.log10(dna)
+        logdna = logdna[ [not x for x in np.isnan(logdna)] ]
+        logdna = logdna[ [not x for x in np.isinf(logdna)] ]
+    dna_colname = set(df.dna_colname)
+    if len(dna_colname) == 1:
+        dna_colname = list(dna_colname)[0]
+    else:
+        print("warning: more than one dna column name: " + barcode + " " + well + " " + str(dna_colname))
+        dna_colname = list(dna_colname)
+    if not return_dna_colname:
+        if return_dna_also:
+            return(list(logdna), dna_orig)
+        else:
+            return(list(logdna))
+    else:
+        if return_dna_also:
+            return(list(logdna), dna_orig, dna_colname)
+        else:
+            return(list(logdna), dna_colname)
+
+
+def kde_dna_plot_avg(barcode, cell_line, smoothing=1):
+    if len(barcode) in [2,3]: barcode = barcode_from_number(barcode)
+    wells = get_wells(barcode, cell_line)
+    #if n_wells is not None: wells = wells[0:n_wells]
+    logdna_all = []
+    #ax = axs[row,col]
+    fig, ax = plt.subplots()
+    for well in wells:
+        logdna, dna_colname = get_logdna(barcode, well)
+        logdna_all.extend(logdna)
+    #return(logdna_all)
+    sns.kdeplot(logdna_all, ax=ax, alpha=0.25, bw_adjust=smoothing).set_title(barcode + " " + cell_line)
+    plt.close()
+    return(fig)
+
+def kde_dna_plot_all_avg(cell_line, n_barcodes=None, smoothing=1):
+    barcodes = get_all_plates_for_cell_line(cell_line)
+    fig, ax = plt.subplots()
+    if n_barcodes is not None: barcodes = barcodes[0:n_barcodes]
+    print(len(barcodes))
+    for i in range(len(barcodes)):
+        #print(i)
+        barcode = barcodes[i]
+        if len(barcode) in [2,3]: barcode = barcode_from_number(barcode)
+        wells = get_wells(barcode, cell_line)
+        #if n_wells is not None: wells = wells[0:n_wells]
+        logdna_all = []
+        for well in wells:
+            logdna, dna_colname = get_logdna(barcode, well)
+            logdna_all.extend(logdna)
+        #return(logdna_all)
+        sns.kdeplot(logdna_all, ax=ax, alpha=0.25, bw_adjust=smoothing).set_title(cell_line)
+        plt.close()
+    return(fig)
+
+def kde_dna_plot_plate(barcode, n_wells = None, output_dir="", filename="test_kde_dna.pdf",
+                   add_dna_lines=False, add_median_dna_lines=False, smoothing=1):
+    if len(barcode) in [2,3]: barcode = barcode_from_number(barcode)
+    cell_lines = get_cell_lines_on_plate(barcode)
+    pdf_full = os.path.join(output_dir, filename)
+    nb_plots = len(cell_lines)
+    if nb_plots != 6: print(barcode + ": " + str(nb_plots) + " cell lines")
+    if nb_plots == 0: return(None)
+    ncols = 2
+    nrows = int(np.ceil(nb_plots/2))
+    nrows = 3
+    fig, axs = plt.subplots(ncols=ncols, nrows=nrows, figsize=(9, 4*nrows),
+                        layout="constrained", sharex= "all")
+    #ldr_cutoffs = []
+    for row in range(nrows):
+        for col in range(ncols):
+            i = row*ncols + col
+            if i == nb_plots: break
+            cell_line = cell_lines[i]
+            wells = get_wells(barcode, cell_line)
+            if n_wells is not None: wells = wells[0:n_wells]
+            logdna_all = []
+            ax = axs[row,col]
+            dna_colnames = []
+            for well in wells:
+                logdna, dna_colname = get_logdna(barcode, well)
+                dna_colnames.append(dna_colname)
+                logdna_all.extend(logdna)
+                sns.kdeplot(logdna, ax=ax, alpha=0.25, bw_adjust=smoothing).set_title(cell_line)
+                #ldr_gates, ldr_lims = dcf_int.get_ldrgates(np.array([10**x for x in logdna]))
+                #ldr_cutoff = ldr_gates[1]
+                #ldr_cutoffs.append(ldr_cutoff)
+                #if add_ldr_line:
+                #    ax.axvline(ldr_cutoff,ymin=0, ymax=0.1, color = "red", linestyle = "--")
+            sns.kdeplot(logdna_all, ax=ax,  alpha=1, color="black", linewidth=2).set_title(cell_line)
+            dna_colname = set(dna_colnames)
+            if len(dna_colname) > 1:
+                print("warning: more than one dna column name: " + barcode + " " + str(dna_colname))
+                xmin = 4
+                xmax = 7
+            else:
+                dna_colname = list(dna_colname)[0]
+                if "Hoechst" in dna_colname:
+                    xmin = 2.5
+                    xmax = 4.5
+                else:
+                    xmin = 4
+                    xmax = 7
+            x_lims = (xmin, xmax)
+            plt.xlim(x_lims)
+            x_ticks = np.arange(np.ceil(xmin), np.floor(xmax)+1)
+            plt.xticks(x_ticks)
+            ax.tick_params(labelbottom=True)
+            #if add_median_ldr_line:
+            #    med_cutoff = np.median(ldr_cutoffs)
+            #    #print(med_cutoff)
+            #    ax.axvline(x=med_cutoff, ymin=0, ymax=1, color = "orange")
+    fig.suptitle(barcode)
+    plt.savefig(pdf_full)
+    return(None)
+
+def kde_dna_plot_all_plates(smoothing=1):
+    if not 'folder_dict' in globals(): define_folder_dict('folder_dict')
+    for date in folder_dict.keys():
+        print(date)
+        plates = get_barcodes(date)
+        plates.sort()
+        for plate in plates:
+            folder = "dna_density_plots"
+            if not os.path.exists(folder): os.makedirs(folder)
+            file = plate + ".pdf"
+            if os.path.exists(os.path.join(folder, file)):
+                print(plate)
+                print("pdf already written")
+            else:
+                kde_dna_plot_plate(plate, output_dir = folder, filename = file, smoothing=smoothing)
+                print(plate)
+    return(None)
+
+def kde_dna_replot_plates(smoothing=1):
+    hdf = pd.read_csv("hoechst_plates.csv")
+    plates = list(hdf['barcode'].copy())
+    for plate in plates:
+        folder = "dna_density_plots"
+        file = plate + ".pdf"
+        kde_dna_plot_plate(plate, output_dir = folder, filename = file, smoothing=smoothing)
+        print(plate)
+    return(None)
 
 
 def get_dna_gating_test(dna, ldrint, ldr_gates, x_dna=None, ax=None):
