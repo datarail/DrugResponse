@@ -368,8 +368,13 @@ def get_ldr_cutoffs_cell_line_and_barcode(barcode, cell_lines, peak_loc=1.2, sil
 ## x_lims: tuple of x limits for the plot
 ## y_lims: tuple of y limits for the plot
 def plot_ldr(df, peak_loc = 1.2, scatter = True, silent = True, show_fig = True, 
-             fig=None, outer=None, i=None, title = "", x_lims=None, y_lims=None, add_ldr_line = None):
-    ldr_gates, ldr_lims = dcf_int.get_ldrgates(ldrint = df['ldr'], peak_loc=peak_loc)
+             fig=None, outer=None, i=None, title = "", x_lims=None, y_lims=None, add_ldr_line = None,
+            ldr_gating_function = "new"):
+    if ldr_gating_function == "new":
+        res = get_ldrgates_new(ldrint = df['ldr'].copy())
+        ldr_gates = res['ldr_gates']
+    else:
+        ldr_gates, _ = dcf_int.get_ldrgates(ldrint = df['ldr'].copy(), peak_loc=peak_loc)
     df = df.copy()
     ldr_cutoff = ldr_gates[1]
     #df = df.query("ldr > 0")
@@ -392,7 +397,8 @@ def plot_ldr(df, peak_loc = 1.2, scatter = True, silent = True, show_fig = True,
 
 def plot_ldr_well(barcode, well, peak_loc = 1.2, scatter = True, silent = True, 
                   show_fig = True, fig=None, outer=None, i=None, title="", x_lims=None, 
-                  y_lims=None, hoechst_as_dna=False, add_ldr_line=None):
+                  y_lims=None, hoechst_as_dna=False, add_ldr_line=None, ldr_gating_function = "new"):
+    if len(barcode) in [2,3]: barcode = barcode_from_number(barcode)
     df = read_and_rename_well_data(barcode, well, silent, hoechst_as_dna=hoechst_as_dna)
     #df = df.query("ldr > 0")
     #df['ldr'] = [x if x>0 else 10**(-10) for x in df.ldr]
@@ -404,16 +410,18 @@ def plot_ldr_well(barcode, well, peak_loc = 1.2, scatter = True, silent = True,
     #df['dna'] = [x if x>0 else min_dna for x in df.dna]
     fig = plot_ldr(df, peak_loc = peak_loc, scatter = scatter, silent = silent, 
                    show_fig = show_fig, fig = fig, outer=outer, i=i, title = title,x_lims=x_lims,
-                   y_lims=y_lims, add_ldr_line = add_ldr_line)
+                   y_lims=y_lims, add_ldr_line = add_ldr_line, ldr_gating_function = ldr_gating_function)
     return(fig)
 
 def plot_ldr_many(barcode, wells, peak_loc = 1.2, scatter = False, silent = True, hoechst_as_dna=False):
+    if len(barcode) in [2,3]: barcode = barcode_from_number(barcode)
     for well in wells:
         df = read_and_rename_well_data(barcode, well, silent, hoechst_as_dna=hoechst_as_dna)
         plot_ldr(df, peak_loc = peak_loc, scatter = scatter)
 
 def plot_ldr_pdf(barcode, wells, peak_loc = 1.2, figname = "test_ldr.pdf", scatter = True, 
                  silent = True, show_fig = True, hoechst_as_dna=False):
+    if len(barcode) in [2,3]: barcode = barcode_from_number(barcode)
     pdf_pages = PdfPages(figname)
     fig_list = []
     for i in range(len(wells)):
@@ -468,6 +476,7 @@ def test_regate(barcode, cell_line, peak_loc = 1.2, figname = "test_figure", sca
 
 def plot_wells_ldr(barcode, cell_line, peak_loc=1.2, scatter = True, silent=True,
                    figname = None, output_dir="default_gating", hoechst_as_dna=False):
+    if len(barcode) in [2,3]: barcode = barcode_from_number(barcode)
     if figname is None: figname=barcode+'_'+cell_line+'_'+'peak_loc_'+str(peak_loc)
     if not 'meta' in globals(): load_well_metadata()
     wells = get_wells(barcode, cell_line)
@@ -533,6 +542,7 @@ def plot_wells_ldr(barcode, cell_line, peak_loc=1.2, scatter = True, silent=True
     return([df2, fig_list])
 
 def get_well_meta(barcode, well):
+    if len(barcode) in [2,3]: barcode = barcode_from_number(barcode)
     query = "barcode == '"+ barcode+ "' & well == '"+ well + "'"
     df_sub = meta.query(query)
     return(df_sub)
@@ -841,6 +851,7 @@ def get_ldr_cutoffs_parallel(peak_loc=1.2, nproc = 10, batch = 1000):
     return(cutoffs)
 
 def get_counts_well(barcode, well, peak_loc=1.2, manual_ldr_cutoff=None, plot=True):
+    if len(barcode) in [2,3]: barcode = barcode_from_number(barcode)
     df = read_and_rename_well_data(barcode, well)
     df_out = dcf_int.get_counts_df(df=df.copy(), barcode=barcode, well=well, 
                                    peak_loc = peak_loc, manual_ldr_cutoff=manual_ldr_cutoff)
@@ -879,6 +890,7 @@ def get_kde_plot_data_well(barcode, well,smoothing=1):
     return(x,y)
 
 def get_logldrint(barcode, well, remove_na=False, return_ldrint_also=False):
+    if len(barcode) in [2,3]: barcode = barcode_from_number(barcode)
     df = read_and_rename_well_data(barcode, well, silent = True)
     ldr_int_orig = df['ldr'].copy()
     ldrint = df['ldr'].copy()
@@ -907,6 +919,7 @@ def kde_plot_cell_line(barcode, cell_line, n_wells=None, well_start=0, title = "
     return(fig)
 
 def kde_plot_avg(barcode, cell_line, smoothing=1):
+    if len(barcode) in [2,3]: barcode = barcode_from_number(barcode)
     wells = get_wells(barcode, cell_line)
     #if n_wells is not None: wells = wells[0:n_wells]
     logint_all = []
@@ -941,6 +954,7 @@ def kde_plot_all_avg(cell_line, n_barcodes=None, smoothing=1):
 
 def kde_plot_plate(barcode, n_wells = None, output_dir="", filename="test_kde.pdf",
                    add_ldr_line=False, add_median_ldr_line=False, smoothing=1):
+    if len(barcode) in [2,3]: barcode = barcode_from_number(barcode)
     cell_lines = get_cell_lines_on_plate(barcode)
     pdf_full = os.path.join(output_dir, filename)
     nb_plots = len(cell_lines)
@@ -2015,15 +2029,24 @@ def get_counts_new(barcode, cell_lines=None, plot_wells=True, select = "median",
         ldrint[ldrint < 0] = float('nan')
         logint = np.log10(ldrint)
         logint[np.isnan(logint)] = -10 ### dummy value
-        ldr_inner = ((ldr_gates[1] >= logdna) & (logdna >= ldr_gates[0]))
-        if np.sum(ldr_inner) < 50:
-            dna = None
-            dna_gates = None
-        else:
-            dna = df_ldr['dna'].copy()
-            dna_gates = dcf_int.get_dna_gating(dna.copy(), ldrint, ldr_gates)
-            if dna_gates is None:
-                dna=None
+        ldr_inner = ((ldr_gates[1] >= logint) & (logint >= ldr_gates[0]))
+        # if np.sum(ldr_inner) < 50:
+        #     dna = None
+        #     dna_gates = None
+        # else:
+        #     dna = df_ldr['dna'].copy()
+        #     dna_gates = dcf_int.get_dna_gating(dna.copy(), ldrint, ldr_gates)
+        #     if dna_gates is None:
+        #         dna=None
+        # dna_colname = list(set(df_ldr['dna_colname']))
+        # if len(dna_colname) > 1:
+        #     ex = "More than one column name for dna:" + " ".join(dna_colname)
+        #     raise Exception(ex)
+        # else:
+        #     if "Hoechst" in dna_colname: ### if Hoechst, don't do dna gating
+        #         dna_gates = None
+        dna_gates = None
+        dna = None
         cell_fate_dict, outcome = dcf_int.live_dead(ldrint, ldr_gates=ldr_gates, dna=dna, dna_gates= dna_gates)
         live_cols = [s for s in list(cell_fate_dict.keys()) if 'alive' in s]
         dead_cols = [s for s in list(cell_fate_dict.keys()) if 'dead' in s]
@@ -2041,16 +2064,16 @@ def get_counts_new(barcode, cell_lines=None, plot_wells=True, select = "median",
         dfs['cell_count'] = a
         dfs['cell_count__dead'] = d
         dfs['cell_count__total'] = len(ldrint)
-        if dna_gates is not None:
-            dfs['dna_gate1'] = dna_gates[0]
-            dfs['dna_gate2'] = dna_gates[1]
-            dfs['dna_gate3'] = dna_gates[2]
-            dfs['dna_gate4'] = dna_gates[3]
-        else:
-            dfs['dna_gate1'] = np.nan
-            dfs['dna_gate2'] = np.nan
-            dfs['dna_gate3'] = np.nan
-            dfs['dna_gate4'] = np.nan
+        # if dna_gates is not None:
+        #     dfs['dna_gate1'] = dna_gates[0]
+        #     dfs['dna_gate2'] = dna_gates[1]
+        #     dfs['dna_gate3'] = dna_gates[2]
+        #     dfs['dna_gate4'] = dna_gates[3]
+        # else:
+        #     dfs['dna_gate1'] = np.nan
+        #     dfs['dna_gate2'] = np.nan
+        #     dfs['dna_gate3'] = np.nan
+        #     dfs['dna_gate4'] = np.nan
         #dfs['ldr_cutoff'] = ldr_gates[1]
         df_counts.append(dfs)
         #################
@@ -2063,7 +2086,7 @@ def get_counts_new(barcode, cell_lines=None, plot_wells=True, select = "median",
     return(out)
 
 
-def get_counts_all(out_file="lincs_combos_new_counts_2023_08_18", out_dir = "results", 
+def get_counts_all(out_file="lincs_combos_new_counts_2023_08_23", out_dir = "results", 
                    n_wells=None, n_plates=None):
     out_csv = os.path.join(out_dir, out_file + ".csv")
     out_parquet = os.path.join(out_dir, out_file + ".parquet")
@@ -2286,6 +2309,63 @@ def kde_dna_replot_plates(smoothing=1):
         print(plate)
     return(None)
 
+def check_edu_and_ph3():
+    barcodes = sorted(bc_to_num.values())
+    col_dict = {}
+    edu = []
+    dna = []
+    ph3 = []
+    hoechst = []
+    for barcode in barcodes:
+        #print(barcode)
+        cell_line = get_cell_lines_on_plate(barcode)[0]
+        wells = get_wells(barcode, cell_line)
+        for well in wells:
+            df = read_well_data(barcode, well)
+            if isinstance(df, pd.DataFrame):
+                if df.shape[1] > 0:
+                    col_dict[barcode] = df.columns
+                    edu_list = ["edu" in col.lower() for col in df.columns]
+                    edu_ind = np.where(edu_list)
+                    if len(edu_ind[0]) > 0:
+                        edu_col = df.columns[ edu_ind[0][0] ]
+                    else:
+                        edu_col = ""
+                    ph3_list = ["ph3" in col.lower() for col in df.columns]
+                    ph3_ind = np.where(ph3_list)
+                    if len(ph3_ind[0]) > 0:
+                        ph3_col = df.columns[ ph3_ind[0][0] ]
+                    else:
+                        ph3_col = ""
+                    dna_list = ["dnacontent" in col.lower() for col in df.columns]
+                    dna_ind = np.where(dna_list)
+                    if len(dna_ind[0]) > 0:
+                        dna_col = df.columns[ dna_ind[0][0] ]
+                    else:
+                        dna_col = ""
+                    hoechst_list = ["hoechst" in col.lower() for col in df.columns]
+                    hoechst_ind = np.where(hoechst_list)
+                    if len(hoechst_ind[0]) > 0:
+                        hoechst_col = df.columns[ hoechst_ind[0][0] ]
+                    else:
+                        hoechst_col = ""
+                    edu.append(edu_col)
+                    dna.append(dna_col)
+                    ph3.append(ph3_col)
+                    hoechst.append(hoechst_col)
+                    break
+                else:
+                    pass
+            else:
+                pass
+    df_out = pd.DataFrame({'barcode': barcodes,
+         'edu': edu,
+         'dna': dna,
+         'ph3': ph3,
+         'hoechst': hoechst
+        })
+    return(df_out)
+
 
 def get_dna_gating_test(dna, ldrint, ldr_gates, x_dna=None, ax=None):
     """Computes gating to claissfy live/dead cells based on DNA content
@@ -2385,6 +2465,8 @@ def get_g1_location_test(log_dna, x_dna, ldrint, ldr_gates):
     else:
         g1_loc = xdna_loc[np.argmax(dna_density)]
     return g1_loc
+
+
 
 ## Notes:
 # 1) write function to loop through all plates and get all counts -- write each to csv, then to parquet at the end
