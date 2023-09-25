@@ -1154,6 +1154,7 @@ def plot_summary(dna, edu, fig=None, x_dna=None, px_edu=None,
         # print('rel_pos', rel_pos)
         ax4 = plt.subplot2grid(grid_size, rel_pos)
         ax5 = None
+        ax4.set_title(title, fontsize=6)
     elif plot is None:
         ax1=None
         ax2=None
