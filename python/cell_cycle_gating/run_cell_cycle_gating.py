@@ -311,6 +311,7 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
         cell_fate_dict, outcome = dcf_int.live_dead(ldrint, ldr_gates=ldr_gates, dna=dna,
                                                     dna_gates= dna_gates,
                                                     ldr_control_cutoff=ldr_control_cutoff)
+        outcome = np.array(outcome)
         live_cols = [s for s in list(cell_fate_dict.keys()) if 'alive' in s]
         dead_cols = [s for s in list(cell_fate_dict.keys()) if 'dead' in s]
         a = 0
@@ -321,7 +322,7 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
             d += cell_fate_dict[col]
     else:
         outcome = np.array([1] * len(dna))
-    try:   
+    try:
         fractions, cell_identity, gates = cc.plot_summary(dna[outcome>=1], edu[outcome>=1], fig=None,
                                                           title=title,
                                                           plot='scatter',
