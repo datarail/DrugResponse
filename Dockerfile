@@ -1,7 +1,7 @@
 FROM jupyter/base-notebook:ubuntu-22.04
 
 # Name your environment and choose the python version
-ARG env_name=ddd_cm
+ARG env_name=deep-dye-drop
 #ARG py_ver=3.8.5
 USER root
 
