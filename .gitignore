@@ -113,3 +113,4 @@ jake*.*
 *.pdf
 *.png
 python/cell_cycle_gating/examples/DDR_example.ipynb
+.Rproj.user

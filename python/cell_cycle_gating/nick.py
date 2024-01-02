@@ -325,7 +325,7 @@ def load_well_metadata(name = 'meta', folder=None,
                        file='single_timepoint_cleaned_from_raw_2023-06-08.parquet'):
     ### read parquet file w/ all metadata
     if folder is None:
-        folder = "/mnt/c/Users/NC168/git/LINCS_combos/data/cleaned/"
+        folder = "/mnt/c/Users/NC168/git/LINCS_combos/data/cleaned/old/"
     full_file = os.path.join(folder, file)
     df = pd.read_parquet(full_file)
     globals()[name] = df
@@ -1603,6 +1603,7 @@ def find_shelf(x, y, main_peak_ldr, min_peak_distance=1, single_peak_cutoff=3, t
         return(None)
 
 def plot_density_derivative(barcode, well):
+    if len(barcode) in [2,3]: barcode = barcode_from_number(barcode)
     logint = get_logldrint(barcode, well)
     fig, ax = plt.subplots()
     x, y = sns.kdeplot(logint, ax=ax, bw_adjust=1).get_lines()[0].get_data()

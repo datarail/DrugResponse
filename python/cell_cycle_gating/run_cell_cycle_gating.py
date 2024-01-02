@@ -116,76 +116,78 @@ def run(data, ndict, dfm=None,
     nb_plots_per_page = 10
     # nb_pages = int(np.ceil(nb_plots / float(nb_plots_per_page)))
     for i, file in enumerate(object_level_data):
+        #print(i)
+        #print(file)
         if i % nb_plots_per_page == 0:
             fig = plt.figure(figsize=(8.27, 11.69), dpi=100)
       
-        try:
-            if os.path.isdir(data):
-                df = pd.read_table('%s/%s' % (data, file))  
-                well = re.search('result.(.*?)\[', file).group(1)
-                well = "%s%s" % (well[0], well[1:].zfill(2))
-                df['well'] = well
-            else:
-                df = df_input[df_input.well == file].copy()
-                df['ldrint'] = df['Cell: LDRrawINT (DDD-bckgrnd)'] - \
-                    df['Cell: LDRbackground (DDD-bckgrnd)']
-                well = file
-                if 'dna' not in df.columns.tolist():
-                    df['dna'] = df['Cell: Average Intensity_Average (DDD)'].multiply(
-                        df['Cell: Area_Average (DDD)'])
-                if ph3_channel and 'ph3' not in df.columns.tolist():
-                    df['ph3'] = df['Cell: pH3rawINT (DDD-bckgrnd)'] - \
-                        df['Cell: pH3background (DDD-bckgrnd)']    
-    
-            df = map_channel_names(df, ndict)
-            # if system=='ixm':
-            #     edu = np.array(df['edu'].tolist())
-            #     if ph3_channel:
-            #         ph3 = np.array(df['ph3'].tolist())
-            #         cells_notnan = ~(np.isnan(edu) | np.isnan(ph3))
-            #     else:
-            #         cells_notnan = ~np.isnan(edu)
-            #     ldr = np.array(df['ldr'].tolist())
-            #     ldr = ldr[cells_notnan]
-            #     ldr_min = np.max((100, ldr.min() - 100))
-            #     ldr_max = ldr.max() + 100
-            #     x_ldr = np.arange(ldr_min, ldr_max, 100)
-            fractions, gates, cell_identity = gate_well(df, dfm_ord=dfm_ord,
-                                                        ph3_channel=ph3_channel,
-                                                        ldr_channel=ldr_channel,
-                                                        px_edu=px_edu, x_ldr=x_ldr,
-                                                        control_based_gating=control_based_gating,
-                                                        control_gates=control_gates,
-                                                        fudge_gates=fudge_gates,
-                                                        fig=fig, plot_num=i,
-                                                        ldr_gates=ldr_gates)
-            #df_summary = df_summary.append(fractions, ignore_index=True)
-            #df_gates = df_gates.append(gates, ignore_index=True)
-            df_summary = pd.concat([df_summary, pd.DataFrame([fractions])], ignore_index=True)
-            df_gates = pd.concat([df_gates, pd.DataFrame([gates])], ignore_index=True)
-            identity_dict[well] = cell_identity
+        #try:
+        if os.path.isdir(data):
+            df = pd.read_table('%s/%s' % (data, file))  
+            well = re.search('result.(.*?)\[', file).group(1)
+            well = "%s%s" % (well[0], well[1:].zfill(2))
+            df['well'] = well
+        else:
+            df = df_input[df_input.well == file].copy()
+            df['ldrint'] = df['Cell: LDRrawINT (DDD-bckgrnd)'] - \
+                df['Cell: LDRbackground (DDD-bckgrnd)']
+            well = file
+            if 'dna' not in df.columns.tolist():
+                df['dna'] = df['Cell: Average Intensity_Average (DDD)'].multiply(
+                    df['Cell: Area_Average (DDD)'])
+            if ph3_channel and 'ph3' not in df.columns.tolist():
+                df['ph3'] = df['Cell: pH3rawINT (DDD-bckgrnd)'] - \
+                    df['Cell: pH3background (DDD-bckgrnd)']    
+
+        df = map_channel_names(df, ndict)
+        # if system=='ixm':
+        #     edu = np.array(df['edu'].tolist())
+        #     if ph3_channel:
+        #         ph3 = np.array(df['ph3'].tolist())
+        #         cells_notnan = ~(np.isnan(edu) | np.isnan(ph3))
+        #     else:
+        #         cells_notnan = ~np.isnan(edu)
+        #     ldr = np.array(df['ldr'].tolist())
+        #     ldr = ldr[cells_notnan]
+        #     ldr_min = np.max((100, ldr.min() - 100))
+        #     ldr_max = ldr.max() + 100
+        #     x_ldr = np.arange(ldr_min, ldr_max, 100)
+        fractions, gates, cell_identity = gate_well(df, dfm_ord=dfm_ord,
+                                                    ph3_channel=ph3_channel,
+                                                    ldr_channel=ldr_channel,
+                                                    px_edu=px_edu, x_ldr=x_ldr,
+                                                    control_based_gating=control_based_gating,
+                                                    control_gates=control_gates,
+                                                    fudge_gates=fudge_gates,
+                                                    fig=fig, plot_num=i,
+                                                    ldr_gates=ldr_gates)
+        #df_summary = df_summary.append(fractions, ignore_index=True)
+        #df_gates = df_gates.append(gates, ignore_index=True)
+        df_summary = pd.concat([df_summary, pd.DataFrame([fractions])], ignore_index=True)
+        df_gates = pd.concat([df_gates, pd.DataFrame([gates])], ignore_index=True)
+        identity_dict[well] = cell_identity
        
-        except ValueError as err:
-            logging.error("%s in well %s" % (err, well))
-            #pass
-        except TypeError as err:
-            logging.error("%s in well %s" % (err, well))
-            #pass
-        except IndexError as err:
-            logging.error("%s in well %s" % (err, well))
-            #pass
-        # your code that will (maybe) throw
-        except np.linalg.LinAlgError as err:
-            if 'Singular matrix' in str(err):
-                logging.error("%s in well %s" % (err, well))
-            #pass
-        except ZeroDivisionError as err:
-            logging.error("%s in well %s" % (err, well))
-            #pass
-        #except pd.io.common.EmptyDataError as err:
-        except pd.errors.EmptyDataError as err:
-            logging.error("%s in well %s" % (err, well))
-            #pass
+        # except ValueError as err:
+        #     logging.error("%s in well %s" % (err, well))
+        #     #pass
+        # except TypeError as err:
+        #     logging.error("%s in well %s" % (err, well))
+        #     #pass
+        # except IndexError as err:
+        #     logging.error("%s in well %s" % (err, well))
+        #     #pass
+        # # your code that will (maybe) throw
+        # except np.linalg.LinAlgError as err:
+        #     if 'Singular matrix' in str(err):
+        #         logging.error("%s in well %s" % (err, well))
+        #     #pass
+        # except ZeroDivisionError as err:
+        #     logging.error("%s in well %s" % (err, well))
+        #     #pass
+        # #except pd.io.common.EmptyDataError as err:
+        # except pd.errors.EmptyDataError as err:
+        #     logging.error("%s in well %s" % (err, well))
+        #     #pass
         if (i + 1) % nb_plots_per_page == 0 or (i + 1) == nb_plots:
             plt.tight_layout()
             pdf_pages.savefig(fig)
@@ -321,20 +323,20 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
             d += cell_fate_dict[col]
     else:
         outcome = np.array([1] * len(dna))
-    try:   
-        fractions, cell_identity, gates = cc.plot_summary(dna[outcome>=1], edu[outcome>=1], fig=None,
-                                                          title=title,
-                                                          plot='scatter',
-                                                          plot_num=plot_num,
-                                                          px_edu=px_edu,
-                                                          control_dna_gates=control_dna_gates,
-                                                          control_edu_gates=control_edu_gates,
-                                                          fudge_gates=np.array(fudge_gates),
-                                                          control_edu_cutoff_bounds=control_edu_cutoff_bounds)
-    except ValueError:
-        fractions = {}
-        gates = {}
-        cell_identity = np.array([0]*len(dna[outcome>=1]))
+    #try:   
+    fractions, cell_identity, gates = cc.plot_summary(dna[outcome>=1], edu[outcome>=1], fig=None,
+                                                      title=title,
+                                                      plot='scatter',
+                                                      plot_num=plot_num,
+                                                      px_edu=px_edu,
+                                                      control_dna_gates=control_dna_gates,
+                                                      control_edu_gates=control_edu_gates,
+                                                      fudge_gates=np.array(fudge_gates),
+                                                      control_edu_cutoff_bounds=control_edu_cutoff_bounds)
+    # except ValueError:
+    #     fractions = {}
+    #     gates = {}
+    #     cell_identity = np.array([0]*len(dna[outcome>=1]))
         
 
     # Revise phases based on pH3
@@ -362,10 +364,12 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
         #axp.text(ph3_cutoff+0.1, 1, str(fractions['M']))
         #axp.set_title(title, fontsize=6)
 
-    edu_live = edu[outcome >=1]   
-    fractions['mean_Sphase_edu'] = edu_live[cell_identity==2].mean()
-    gates['mean_Sphase_edu'] = np.log10(edu_live[cell_identity==2].mean())
-    gates['mean_Gphase_edu'] = np.log10(edu_live[cell_identity==1].mean())
+    edu_live = edu[outcome >=1]
+    edu_live_1 = edu_live[cell_identity==1]
+    edu_live_2 = edu_live[cell_identity==2]
+    fractions['mean_Sphase_edu'] = edu_live_2.mean() if len(edu_live_2) else 0
+    gates['mean_Sphase_edu'] = np.log10(edu_live_2.mean()) if len(edu_live_2) else np.nan
+    gates['mean_Gphase_edu'] = np.log10(edu_live_1.mean()) if len(edu_live_1) else np.nan
     
     if ldr_channel:
         fractions['cell_count'] = a
