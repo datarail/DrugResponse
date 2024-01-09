@@ -31,6 +31,7 @@ from cell_cycle_gating import findpeaks as fp
 from pomegranate.gmm import GeneralMixtureModel
 from pomegranate.distributions import *
 import torch
+import warnings
 
 
 ### functions to read data and call joint-gating, etc.
@@ -38,26 +39,6 @@ import torch
 ###### write new function based on Coralie's data here #######
 
 #### plotting functions
-
-def plot_ldr_all_plates(df, barcode_col= 'barcode', cell_line_col = 'cell_line', 
-                    well_col = 'well', ldr_col = 'ldr', output_pdf = True,
-                   n_wells = None, output_dir="", smoothing=1,
-                  add_ldr_line = False, add_median_ldr_line = True,
-                  new_gating_algorithm = True, peak_loc = float('-inf')):
-    barcodes = df[barcode_col].unique().tolist()
-    for barcode in barcodes:
-        qq = "barcode == " + "'" + barcode + "'"
-        df_tmp = df.query(qq)
-        fname = barcode + "_ldr_plot" + ".pdf"
-        plot_ldr_plate(df_tmp, barcode, barcode_col=barcode_col, cell_line_col=cell_line_col,
-                       well_col=well_col, ldr_col=ldr_col, output_pdf=output_pdf,
-                       n_wells=n_wells, output_dir=output_dir, filename=fname,
-                       smoothing=smoothing, add_ldr_line=add_ldr_line, 
-                       add_median_ldr_line=add_median_ldr_line,
-                       new_gating_algorithm=new_gating_algorithm,
-                       peak_loc=peak_loc
-                       )
-    return(None)
 
 def plot_ldr_all_plates_no_gating(df, barcode_col= 'barcode', cell_line_col = 'cell_line', 
                     well_col = 'well', ldr_col = 'ldr', output_pdf = False,
@@ -68,7 +49,7 @@ def plot_ldr_all_plates_no_gating(df, barcode_col= 'barcode', cell_line_col = 'c
         qq = "barcode == " + "'" + barcode + "'"
         df_tmp = df.query(qq)
         fname = barcode + "_ldr_plot" + ".pdf"
-        plot_ldr_plate(df_tmp, barcode, barcode_col=barcode_col, cell_line_col=cell_line_col,
+        get_counts_plate(df_tmp, barcode, barcode_col=barcode_col, cell_line_col=cell_line_col,
                        well_col=well_col, ldr_col=ldr_col, output_pdf=output_pdf,
                        n_wells=n_wells, output_dir=output_dir, filename=fname,
                        smoothing=smoothing, add_ldr_line=False, 
@@ -82,7 +63,7 @@ def plot_ldr_plate_no_gating(df, barcode, barcode_col= 'barcode', cell_line_col 
                     n_wells = None, output_dir="", filename="test_ldr_plate.pdf",
                     new_gating_algorithm=True):
     
-    plot_ldr_plate(df=df, barcode=barcode, cell_line_col=cell_line_col,
+    get_counts_plate(df=df, barcode=barcode, cell_line_col=cell_line_col,
                    well_col=well_col, ldr_col=ldr_col, output_pdf=output_pdf,
                    n_wells=n_wells, output_dir=output_dir, filename=filename,
                    add_ldr_line=False, add_median_ldr_line=False,
@@ -90,11 +71,39 @@ def plot_ldr_plate_no_gating(df, barcode, barcode_col= 'barcode', cell_line_col 
     return(None)
     
 
-def plot_ldr_plate(df, barcode, barcode_col= 'barcode', cell_line_col = 'cell_line', 
+def get_counts_all(df, barcode_col= 'barcode', cell_line_col = 'cell_line', 
+                    well_col = 'well', ldr_col = 'ldr', output_pdf = True,
+                   n_wells = None, output_dir="", smoothing=1,
+                  add_ldr_line = False, add_median_ldr_line = True,
+                  new_gating_algorithm = True, metadata_cols = [],
+                  peak_loc = float('-inf')):
+    barcodes = df[barcode_col].unique().tolist()
+    df_list = []
+    for barcode in barcodes:
+        qq = "barcode == " + "'" + barcode + "'"
+        df_tmp = df.query(qq)
+        fname = barcode + "_ldr_plot" + ".pdf"
+        df_tmp = get_counts_plate(df_tmp, barcode, barcode_col=barcode_col, 
+                        cell_line_col=cell_line_col,
+                       well_col=well_col, ldr_col=ldr_col, output_pdf=output_pdf,
+                       n_wells=n_wells, output_dir=output_dir, filename=fname,
+                       smoothing=smoothing, add_ldr_line=add_ldr_line, 
+                       add_median_ldr_line=add_median_ldr_line,
+                       new_gating_algorithm=new_gating_algorithm,
+                       metadata_cols = metadata_cols,
+                       peak_loc=peak_loc
+                       )
+        df_list.append(df_tmp)
+    df_full = pd.concat(df_list)
+    df_full = df_full.reset_index(drop=True)
+    return(df_full)
+
+def get_counts_plate(df, barcode, barcode_col= 'barcode', cell_line_col = 'cell_line', 
                     well_col = 'well', ldr_col = 'ldr', output_pdf = True,
                     n_wells = None, output_dir="", filename="test_ldr_plate.pdf",
                     add_ldr_line = False, add_median_ldr_line = True,
                     new_gating_algorithm = True,
+                    metadata_cols = [],
                     ### options for old gating algorithm (get_ldrgates function)
                     peak_loc = float('-inf'),
                     ### options for new gating algorithm (get_ldrgates_new function)
@@ -107,7 +116,8 @@ def plot_ldr_plate(df, barcode, barcode_col= 'barcode', cell_line_col = 'cell_li
                     mixture_backup_method="valley", silent=True,
                     return_peaks_only=False,
                     ### options for joint gating
-                    window_size = 0.2
+                    window_size = 0.2,
+                    testing = False
                   ):
     cell_lines = df[cell_line_col].unique().tolist()
     pdf_full = os.path.join(output_dir, filename)
@@ -125,6 +135,7 @@ def plot_ldr_plate(df, barcode, barcode_col= 'barcode', cell_line_col = 'cell_li
     logint_all = logint_all.dropna()
     xmin = min(logint_all)
     xmax = max(logint_all)
+    df_list_full = []
     for row in range(nrows):
         for col in range(ncols):
             ldr_cutoffs = []
@@ -173,24 +184,68 @@ def plot_ldr_plate(df, barcode, barcode_col= 'barcode', cell_line_col = 'cell_li
                         ldr_cutoffs.append(ldr_cutoff)
                         ### construct results data frame
                         pdict['well'] = well
-                        pdict['barcode']=barcode
-                        pdict['cell_line']=cell_line
-                        cols = ['barcode', 'cell_line', 'ldr_cutoff', 'peak1', 'peak2', 
-                                    'peak1_height', 'peak2_height','shelf','method_used', 'ldr_cutoff_mixture', 
-                                'ldr_cutoff_valley', 'ldr_cutoff_middle']
+                        pdict['barcode'] = barcode
+                        pdict['cell_line'] = cell_line
+                        cols = ['well','barcode', 'cell_line', 'ldr_cutoff']
                         # cols = ['well','ldr_cutoff', 'peak1', 'peak2', 
                         #             'peak1_height', 'peak2_height','shelf','method_used', 'ldr_cutoff_mixture', 
                         #         'ldr_cutoff_valley', 'ldr_cutoff_middle']
                         dd = {k:v for (k,v) in pdict.items() if k in cols}
-                        pdict2 = {k:v for (k,v) in pdict.items() if not k in cols}
-                        res_df = pd.DataFrame(data=dd, index=[0])
-                        res_df = res_df[cols]
-                        df_list.append(res_df)
-                        props_dict[well] = pdict2
+                        for col in metadata_cols:
+                            len1 = df_well[col].unique().size
+                            if len1 == 1:
+                                dd[col] = df_well[col].unique()[0]
+                            elif len1 < 1:
+                                dd[col] = None
+                                msg = "Warning for barcode: " + barcode + " well: " + well
+                                msg = msg + "no values for metadata column " + "'" + col + "'"
+                                warnings.warn(msg)
+                            elif len1 > 1:
+                                dd[col] = None
+                                msg = "Warning for barcode: " + barcode + " well: " + well
+                                msg = msg + "multiple value for metadata column " + "'" + col + "'"
+                                msg = msg + ' '.join(str(x) for x in df_well[col].unique())
+                                warnings.warn(msg)
+                        #pdict2 = {k:v for (k,v) in pdict.items() if not k in cols}
+                        ### dataframe with ldr cutoff (one row)
+                        tmp_df = pd.DataFrame(data=dd, index=[0])
+
+                        #### get counts from ldr gates
+                        ldr_gates = np.array([-np.inf, ldr_cutoff])
+                        dna_gates = None
+                        dna = None
+                        cell_fate_dict, outcome = dcf_int.live_dead(ldrint, ldr_gates=ldr_gates, dna=dna, dna_gates= dna_gates)
+                        live_cols = [s for s in list(cell_fate_dict.keys()) if 'alive' in s]
+                        dead_cols = [s for s in list(cell_fate_dict.keys()) if 'dead' in s]
+                        a = 0
+                        d = 0
+                        for col in live_cols:
+                            a += cell_fate_dict[col]
+                        for col in dead_cols:
+                            d += cell_fate_dict[col]
+                        dfs = pd.DataFrame(cell_fate_dict, index=[0])
+                        #print('dna_gates')
+                        #print(dna_gates)
+                        dfs['cell_count'] = a
+                        dfs['cell_count__dead'] = d
+                        dfs['cell_count__total'] = len(ldrint)
+                        tmp_df_full = pd.concat([tmp_df, dfs], axis = 1)
+                        df_list.append(tmp_df_full)
+                        #props_dict[well] = pdict2
                 if add_ldr_line:
                     ax.axvline(ldr_cutoff,ymin=0, ymax=1, color = "red", linestyle = "--", alpha = 0.1)
+            ### organize output dataframe and dictionary
+            res_df = pd.concat(df_list)
+            res_df = res_df.reset_index(drop=True)
+            ldr_cutoff_median = np.nanmedian(res_df.ldr_cutoff)
+            ldr_cutoff_min = ldr_cutoff_median - window_size
+            ldr_cutoff_max = ldr_cutoff_median + window_size
+            res_df['ldr_cutoff_median'] = ldr_cutoff_median
+            res_df['ldr_cutoff_min'] = ldr_cutoff_min
+            res_df['ldr_cutoff_max'] = ldr_cutoff_max
+            res_df['ldr_cutoff_final'] = np.clip(res_df['ldr_cutoff'], ldr_cutoff_min, ldr_cutoff_max)
+            df_list_full.append(res_df)
             #sns.kdeplot(logint_all, ax=ax, color = "red").set_title(cell_line)
-            
             #xmin = -2
             #xmax = 6
             x_lims = (xmin, xmax)
@@ -206,16 +261,22 @@ def plot_ldr_plate(df, barcode, barcode_col= 'barcode', cell_line_col = 'cell_li
     if output_pdf:
         print(pdf_full)
         plt.savefig(pdf_full)
-    ### organize output dataframe and dictionary
-    res_df_full = pd.concat(df_list)
+    res_df_full = pd.concat(df_list_full)
     res_df_full = res_df_full.reset_index(drop=True)
-    ldr_cutoff_median = np.nanmedian(res_df_full.ldr_cutoff)
-    ldr_cutoff_min = ldr_cutoff_median - window_size
-    ldr_cutoff_max = ldr_cutoff_median + window_size
-    res_df_full['ldr_cutoff_median'] = ldr_cutoff_median
-    res_df_full['ldr_cutoff_min'] = ldr_cutoff_min
-    res_df_full['ldr_cutoff_max'] = ldr_cutoff_max
-    res_df_full['ldr_cutoff_final'] = np.clip(res_df_full['ldr_cutoff'], ldr_cutoff_min, ldr_cutoff_max)
+    if new_gating_algorithm:
+        func_settings = ['smoothing', 'first_peak_min', 'min_prominence', 'min_peak_height',
+                     'min_peak_distance', 'single_peak_cutoff', 'mixture_backup_method', 'peak_loc']
+        res_df_full['gating_algorithm'] = "new algorithm"
+    else:
+        func_settings = ['peak_loc']
+        res_df_full['gating_algorithm'] = "old algorithm"
+    if not testing:
+        cell_count_cols = ['cell_count', 'cell_count__dead', 'cell_count__total']
+        phase_cols = ['alive', 'alive_subg1', 'alive_beyondg2', 'dead_ldrpos', 'dead_subg1']
+        cols = ['well', 'barcode', 'cell_line'] + metadata_cols + ['ldr_cutoff_final'] + phase_cols + cell_count_cols
+        res_df_full = res_df_full.filter(items = cols)
+        res_df_full.rename(columns={'ldr_cutoff_final':'ldr_cutoff'}, inplace=True)
+    
     #results = {'df': res_df_full, 'peak_props': props_dict}
     return(res_df_full)
 
