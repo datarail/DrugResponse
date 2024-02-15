@@ -322,51 +322,65 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
             d += cell_fate_dict[col]
     else:
         outcome = np.array([1] * len(dna))
-    try:
-        fractions, cell_identity, gates = cc.plot_summary(dna[outcome>=1], edu[outcome>=1], fig=None,
-                                                          title=title,
-                                                          plot='scatter',
-                                                          plot_num=plot_num,
-                                                          px_edu=px_edu,
-                                                          control_dna_gates=control_dna_gates,
-                                                          control_edu_gates=control_edu_gates,
-                                                          fudge_gates=np.array(fudge_gates),
-                                                          control_edu_cutoff_bounds=control_edu_cutoff_bounds)
-    except ValueError:
+    ### if all cells are dead
+    if sum(outcome>=1) == 0:
         fractions = {}
         gates = {}
-        cell_identity = np.array([0]*len(dna[outcome>=1]))
-        
-
-    # Revise phases based on pH3
-    if ph3_channel:
-        #grid_size = (5, 2)
-        #plot_num = plot_num % 10
-        #rel_pos = np.unravel_index(plot_num, grid_size)
-        #axp = plt.subplot2grid(grid_size, rel_pos)
-        
-        log_ph3 = pf.compute_log_ph3(ph3[outcome>=1])
-        #x_ph3 = np.arange(2.5, 8, 0.02)
-        #f_ph3 = get_kde(log_ph3, x_ph3)
-        #peak_amp, peak_loc, peak_width = findpeaks(f_ph3.tolist(), npeaks=2, thresh=0.1)
-        #if len(peak_amp) >= 2:
-        #    cutoff_loc, _ = get_prominence_reference_level(
-        #        f_ph3.tolist(), peak_amp[1], peak_loc[1])
-        #    ph3_cutoff = x_ph3[cutoff_loc]
-        #del_ph3 = x_ph3[peak_loc[0]] - log_ph3.min()
-        #ph3_cutoff = x_ph3[peak_loc[0]] + del_ph3
-        #else:
-        f_ph3, ph3_cutoff, ph3_lims = pf.get_ph3_gates(ph3[outcome>=1], cell_identity)
-        fractions, cell_identity = pf.evaluate_Mphase(log_ph3, ph3_cutoff, cell_identity)
-        #sns.kdeplot(log_ph3, ax=axp)
-        #axp.vlines(ph3_cutoff, 0, 2)
-        #axp.text(ph3_cutoff+0.1, 1, str(fractions['M']))
-        #axp.set_title(title, fontsize=6)
-
-    edu_live = edu[outcome >=1]   
-    fractions['mean_Sphase_edu'] = edu_live[cell_identity==2].mean()
-    gates['mean_Sphase_edu'] = np.log10(edu_live[cell_identity==2].mean())
-    gates['mean_Gphase_edu'] = np.log10(edu_live[cell_identity==1].mean())
+        cell_identity = outcome
+        cols = []
+        if ph3_channel:
+            cols = ['subG1', 'G1', 'S', 'S_dropout', 'G2', 'M', 'beyondG2']
+        else:
+            cols = ['subG1', 'G1', 'S', 'S_dropout', 'G2', 'beyondG2']
+        for x in cols:
+            fractions[x] = 0
+        fractions['mean_Sphase_edu'] = float('nan')
+    else:
+        try:
+            fractions, cell_identity, gates = cc.plot_summary(dna[outcome>=1], edu[outcome>=1], fig=None,
+                                                              title=title,
+                                                              plot='scatter',
+                                                              plot_num=plot_num,
+                                                              px_edu=px_edu,
+                                                              control_dna_gates=control_dna_gates,
+                                                              control_edu_gates=control_edu_gates,
+                                                              fudge_gates=np.array(fudge_gates),
+                                                              control_edu_cutoff_bounds=control_edu_cutoff_bounds)
+        except ValueError:
+            fractions = {}
+            gates = {}
+            cell_identity = np.array([0]*len(dna[outcome>=1]))
+            
+    
+        # Revise phases based on pH3
+        if ph3_channel:
+            #grid_size = (5, 2)
+            #plot_num = plot_num % 10
+            #rel_pos = np.unravel_index(plot_num, grid_size)
+            #axp = plt.subplot2grid(grid_size, rel_pos)
+            
+            log_ph3 = pf.compute_log_ph3(ph3[outcome>=1])
+            #x_ph3 = np.arange(2.5, 8, 0.02)
+            #f_ph3 = get_kde(log_ph3, x_ph3)
+            #peak_amp, peak_loc, peak_width = findpeaks(f_ph3.tolist(), npeaks=2, thresh=0.1)
+            #if len(peak_amp) >= 2:
+            #    cutoff_loc, _ = get_prominence_reference_level(
+            #        f_ph3.tolist(), peak_amp[1], peak_loc[1])
+            #    ph3_cutoff = x_ph3[cutoff_loc]
+            #del_ph3 = x_ph3[peak_loc[0]] - log_ph3.min()
+            #ph3_cutoff = x_ph3[peak_loc[0]] + del_ph3
+            #else:
+            f_ph3, ph3_cutoff, ph3_lims = pf.get_ph3_gates(ph3[outcome>=1], cell_identity)
+            fractions, cell_identity = pf.evaluate_Mphase(log_ph3, ph3_cutoff, cell_identity)
+            #sns.kdeplot(log_ph3, ax=axp)
+            #axp.vlines(ph3_cutoff, 0, 2)
+            #axp.text(ph3_cutoff+0.1, 1, str(fractions['M']))
+            #axp.set_title(title, fontsize=6)
+    
+        edu_live = edu[outcome >=1]   
+        fractions['mean_Sphase_edu'] = edu_live[cell_identity==2].mean()
+        gates['mean_Sphase_edu'] = np.log10(edu_live[cell_identity==2].mean())
+        gates['mean_Gphase_edu'] = np.log10(edu_live[cell_identity==1].mean())
     
     if ldr_channel:
         fractions['cell_count'] = a
