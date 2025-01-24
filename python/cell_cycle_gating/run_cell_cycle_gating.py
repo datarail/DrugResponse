@@ -115,6 +115,12 @@ def run(data, ndict, dfm=None,
         
     nb_plots_per_page = 10
     # nb_pages = int(np.ceil(nb_plots / float(nb_plots_per_page)))
+
+    ### get LDR gates for all wells
+    # call get_counts_all here?
+    # edit "gate_well" function to take the LDR gates from result above
+    
+    ### note: "file" is the well here
     for i, file in enumerate(object_level_data):
         if i % nb_plots_per_page == 0:
             fig = plt.figure(figsize=(8.27, 11.69), dpi=100)
@@ -296,7 +302,8 @@ def gate_well(df, dfm_ord=None, ph3_channel=True, ldr_channel=True,
         ldrint = np.array(df['ldrint'].tolist())
         ldrint = ldrint[cells_notnan]
         logldr_peak = dcf_int.get_ldr_peak_val(ldrint)
-        ldr_gates, ldr_lims = dcf_int.get_ldrgates(ldrint, ldr_control_cutoff, peak_loc=control_ldr_cutoff)
+        if ldr_gates is None:
+            ldr_gates, ldr_lims = dcf_int.get_ldrgates(ldrint, ldr_control_cutoff, peak_loc=control_ldr_cutoff)
         logint = np.log10(ldrint)
         logint[np.isnan(logint)] = -10 
         ldr_inner = ((ldr_gates[1] >= logint) & (logint >= ldr_gates[0]))
