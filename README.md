@@ -8,21 +8,13 @@ If necessary, install mamba:
 ```
 conda install mamba
 ```
-
 Create a conda environment with the necessary dependencies:
 ```
-mamba env create -n deep_dye_drop --file=env_conda.yaml
+mamba env create -n deep_dye_drop --file=env_conda_2025.yaml
 ```
 Activate the new conda environment
 ```
 conda activate deep_dye_drop
-```
-
-Install the cell_cycle_gating package and other necessary packages through pip
-```
-pip install git+https://github.com/datarail/datarail.git
-pip install git+https://github.com/datarail/gr_metrics.git#egg=gr50\&subdirectory=SRC/python
-pip install git+https://github.com/datarail/DrugResponse.git#egg=cell_cycle_gating\&subdirectory=python
 ```
 
 Open Jupyter Lab:

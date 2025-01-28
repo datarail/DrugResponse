@@ -16,5 +16,9 @@ dependencies:
   - git
   - jupyterlab
   - nb_conda
-  - pip
   - pomegranate=1.0.0
+  - pip
+  - pip:
+    - "--editable=git+https://github.com/datarail/datarail.git#egg=datarail"
+    - "--editable=git+https://github.com/datarail/gr_metrics.git#egg=gr50&subdirectory=SRC/python"
+    - "--editable=git+https://github.com/datarail/DrugResponse.git#egg=cell_cycle_gating&subdirectory=python"
