@@ -10,7 +10,7 @@ def main():
           author_email='marc_hafner@hms.harvard.edu',
           url='http://github.com/datarail/DrugResponse',
           packages=find_packages(),
-          install_requires=['numpy', 'pandas', 'peakutils', 'seaborn', 'matplotlib'],
+          install_requires=['numpy', 'pandas', 'peakutils', 'seaborn', 'matplotlib', 'pomegranate', 'torch'],
           keywords=['systems', 'biology', 'data', 'array', 'matrix'],
           classifiers=[
             'Development Status :: 3 - Alpha',

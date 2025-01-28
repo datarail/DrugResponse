@@ -447,18 +447,26 @@ def summary_peak_val(batch, ndict):
 
 ###### Functions for new gating methods below (written by Nick Clark, January 2025) ----------------
 
-def get_counts_plate_batch(df,
-                           barcode_col_design= 'barcode', 
-                           cell_line_col_design = 'cell_line', 
-                           well_col_design = 'well',
-                           ldr_col_data = 'ldrint', 
-                           well_col_data = 'Well Name',
-                           dna_col_data = 'Cell: DNAcontent (DD-bckgrnd)',
-                           output_pdf = True,
-                   n_wells = None, output_dir="", smoothing=1,
-                  add_ldr_line = False, add_median_ldr_line = True,
-                  new_gating_algorithm = True, metadata_cols = [],
-                  peak_loc = float('-inf'), main_dir = "", well_file_ending = 'test].csv'):
+def get_counts_plate_batch(
+        df,
+        barcode_col_design= 'barcode', 
+        cell_line_col_design = 'cell_line', 
+        well_col_design = 'well',
+        ldr_col_data = 'ldrint', 
+        well_col_data = 'Well Name',
+        dna_col_data = 'Cell: DNAcontent (DD-bckgrnd)',
+        output_pdf = True,
+        n_wells = None, 
+        output_dir="",
+        smoothing=1,
+        add_ldr_line = False, 
+        add_median_ldr_line = True,
+        new_gating_algorithm = True, 
+        metadata_cols = [],
+        peak_loc = float('-inf'), 
+        main_dir = "", 
+        well_file_ending = 'test].csv'
+        ):
     """Get live/dead cell counts for all plates and wells listed in a design layout file.
     The function loops over the plates and gates them one by one. It considers all wells of the same cell line on the same plate to be a group, first finding gates for them individually, then selecting the median of these gates as the final gate for the group.
 
@@ -484,7 +492,7 @@ def get_counts_plate_batch(df,
         If None, then all wells will be gated, otherwise only the first "n_wells" will be gated. This is included mostly for testing purposes. Default is None (gating all wells).
     output_dir : str, optional
         Directory for the output. Default is the current directory.
-    smoothing : int, optional
+    smoothing : float, optional
         Amount of "smoothing" to use for the kernel density function when gating. Default is 1.
     add_ldr_line : bool, optional
         Whether to include lines to show Live/Dead Red gating for each individual well. This usually looks messy, so default is False.
@@ -534,34 +542,37 @@ def get_counts_plate_batch(df,
     df_full = df_full.reset_index(drop=True)
     return(df_full)
 
-def get_counts_plate(df, barcode, plate_data_dir=None, 
-                    well_file_ending = 'test].csv',
-                    barcode_col_design= 'barcode', 
-                    cell_line_col_design = 'cell_line', 
-                    well_col_design = 'well', 
-                    ldr_col_data = 'ldrint',
-                    well_col_data = 'Well Name',
-                    dna_col_data = 'Cell: DNAcontent (DD-bckgrnd)',
-                    output_pdf = True,
-                    n_wells = None, output_dir="",
-                    add_ldr_line = False, add_median_ldr_line = True,
-                    new_gating_algorithm = True,
-                    metadata_cols = [],
-                    ### options for old gating algorithm (get_ldrgates function)
-                    peak_loc = float('-inf'),
-                    ### options for new gating algorithm (get_ldrgates_new function)
-                    smoothing=1,
-                    first_peak_min=float('-inf'),
-                    min_prominence=0,
-                    min_peak_height=0.02,
-                    min_peak_distance=0.5,
-                    single_peak_cutoff=float('inf'),
-                    mixture_backup_method="valley", silent=True,
-                    return_peaks_only=False,
-                    ### options for joint gating
-                    window_size = 0,
-                    testing = False
-                  ):
+def get_counts_plate(
+        df, 
+        barcode, 
+        plate_data_dir=None, 
+        well_file_ending = 'test].csv',
+        barcode_col_design= 'barcode', 
+        cell_line_col_design = 'cell_line', 
+        well_col_design = 'well', 
+        ldr_col_data = 'ldrint',
+        well_col_data = 'Well Name',
+        dna_col_data = 'Cell: DNAcontent (DD-bckgrnd)',
+        output_pdf = True,
+        n_wells = None, output_dir="",
+        add_ldr_line = False, add_median_ldr_line = True,
+        new_gating_algorithm = True,
+        metadata_cols = [],
+        ### options for old gating algorithm (get_ldrgates function)
+        peak_loc = float('-inf'),
+        ### options for new gating algorithm (get_ldrgates_new function)
+        smoothing=1,
+        first_peak_min=float('-inf'),
+        min_prominence=0,
+        min_peak_height=0.02,
+        min_peak_distance=0.5,
+        single_peak_cutoff=3,
+        silent=True,
+        return_peaks_only=False,
+        ### options for joint gating
+        window_size = 0,
+        testing = False
+        ):
     """Get live/dead cell counts for all wells on a single plate.
     The function considers all wells of the same cell line on the same plate to be a group, first finding gates for them individually, then selecting the median of these gates as the final gate for the group.
 
@@ -593,7 +604,7 @@ def get_counts_plate(df, barcode, plate_data_dir=None,
         If None, then all wells will be gated, otherwise only the first "n_wells" will be gated. This is included mostly for testing purposes. Default is None (gating all wells).
     output_dir : str, optional
         Directory for the output. Default is the current directory.
-    smoothing : int, optional
+    smoothing : float, optional
         Amount of "smoothing" to use for the kernel density function when gating. Default is 1.
     add_ldr_line : bool, optional
         Whether to include lines to show Live/Dead Red gating for each individual well. This usually looks messy, so default is False.
@@ -605,10 +616,30 @@ def get_counts_plate(df, barcode, plate_data_dir=None,
         Other metadata columns in the design dataframe. Default is an empty list: [].
     peak_loc : float
         Fluorescence value to start at when looking for peaks. Setting this parameter can sometimes help when gating functions find "false peaks" or blips in the density function before the true live/dead peaks. Default is float('-inf'), i.e. this parameter is not used by default. This parameter was more useful with previous gating methods, but with the updated gating methods it is not necessary.
-        
+    smoothing: float, optional
+        A parameter deciding how much smoothing to use for the kernel density estimation (sns.kdeplot, bw_adjust parameter). Default is 1 (no smoothing).
+    first_peak_min : float, optional
+        Minimum fluorescence value to start looking for live/dead peaks in the LDR density plot. Default is negative infinity, float('-inf').
+    min_prominence : float, optional
+        The minimum "prominence" (returned by scipy.signal.find_peaks) of a peak (live or dead) in the LDR fluorescence data required. Smaller peaks are ignored. Default is 0 (i.e. do not exclude any peaks based on prominence).
+    min_peak_height : float, optional
+        The minimum height (returned by scipy.signal.find_peaks) of a peak (live or dead) in the LDR fluorescence data required. Smaller peaks are ignored. Default is 0.02 (ignores small blips in the density plots).
+    min_peak_distance : float, optional
+        The minimum distance from the highest peak (live or dead) in the LDR fluorescence data to look for a second peak. Default is 0.5 (ignores peaks that are too close to eachother).
+    single_peak_cutoff : float, optional
+        If only one peak is detected, the LDR cutoff value that decides whether to call it a live peak or a dead peak. Default is 3, meaning if a single peak is detected at LDR value less than 3, it is assumed that it is the live peak (99% of cells assumed alive). Otherwise it is assumed to be the dead peak (99% of cells dead).
+    silent : bool, optional
+        Print dataframe output for each well. Default is True (no printing).
+    return_peaks_only : bool, optional
+        Return only a dictionary with peak details (output of get_peaks_ldr function) instead of a dataframe. Default is False.
+    window_size : float, optional
+        If this parameter is zero, the live/dead gate for each well is set to be the median of all of the gates for individual wells. If a positive number, it allows a small "window" around the median gate where gates for individual wells can differ slightly.
+    testing : bool, optional
+        If True, the output dataframe will contain extra columns with gating info. Default is False.
+
     Returns
     -------
-        A pandas dataframe with the gates and live/dead cell counts for each well for all plates in the batch. Prints a pdf with gating for each group (cell line) on the plate. Note: It is written write now to assume up to 6 cell lines per plate... may error if there are more.
+        A pandas dataframe with the gates and live/dead cell counts for each well on the plate. Prints a pdf with gating for each group (cell line) on the plate. Note: It is written write now to assume up to 6 cell lines per plate... may error if there are more.
     """
     if plate_data_dir is None:
         plate_data_dir = barcode
@@ -694,7 +725,6 @@ def get_counts_plate(df, barcode, plate_data_dir=None,
                                         min_prominence=min_prominence, 
                                         min_peak_height=min_peak_height, min_peak_distance=min_peak_distance,
                                         single_peak_cutoff=single_peak_cutoff,
-                                        mixture_backup_method=mixture_backup_method, 
                                         silent=silent,
                                         return_peaks_only=return_peaks_only,
                                         suppress_fig=True)
@@ -799,11 +829,51 @@ def get_counts_plate(df, barcode, plate_data_dir=None,
     return(res_df_full)
 
 ### main function (single-well gating)
-def get_ldrgates_new(ldrint, smoothing=1, show=False, first_peak_min=float('-inf'),
-                     min_prominence=0, min_peak_height=0.02, min_peak_distance=0.5,
-                     single_peak_cutoff=float('inf'),
-                     mixture_backup_method="valley", silent=True,
-                    return_peaks_only=False, suppress_fig=False):
+def get_ldrgates_new(
+        ldrint, 
+        smoothing=1, 
+        show=False, 
+        first_peak_min=float('-inf'),      
+        min_prominence=0, 
+        min_peak_height=0.02, 
+        min_peak_distance=0.5,
+        single_peak_cutoff=3,
+        silent=True,
+        return_peaks_only=False, 
+        suppress_fig=False
+        ):
+    """Get live/dead gating value for a single well, using the updated gating algorithm (Nick Clark, 2025). This algorithm makes the gating of individual wells much more robust for edge cases (e.g. small blip in the density function, "shelf" rather than "valley" between live and dead peaks) and finds an optimal gate by fitting a Gaussian mixture model.
+
+    Parameters
+    ----------
+    ldrint : pandas Series (column) of floats
+        A list of Live/Dead Red fluorescence values for individual cells in a well.
+    smoothing: float, optional
+        A parameter deciding how much smoothing to use for the kernel density estimation (sns.kdeplot, bw_adjust parameter). Default is 1 (no smoothing).
+    show : bool, optional
+        Show kernel density plot for LDR values in the well. Default is False.
+    first_peak_min : float, optional
+        Minimum fluorescence value to start looking for live/dead peaks in the LDR density plot. Default is negative infinity, float('-inf').
+    min_prominence : float, optional
+        The minimum "prominence" (returned by scipy.signal.find_peaks) of a peak (live or dead) in the LDR fluorescence data required. Smaller peaks are ignored. Default is 0 (i.e. do not exclude any peaks based on prominence).
+    min_peak_height : float, optional
+        The minimum height (returned by scipy.signal.find_peaks) of a peak (live or dead) in the LDR fluorescence data required. Smaller peaks are ignored. Default is 0.02 (ignores small blips in the density plots).
+    min_peak_distance : float, optional
+        The minimum distance from the highest peak (live or dead) in the LDR fluorescence data to look for a second peak. Default is 0.5 (ignores peaks that are too close to eachother).
+    single_peak_cutoff : float, optional
+        If only one peak is detected, the LDR cutoff value that decides whether to call it a live peak or a dead peak. Default is 3, meaning if a single peak is detected at LDR value less than 3, it is assumed that it is the live peak (99% of cells assumed alive). Otherwise it is assumed to be the dead peak (99% of cells dead).
+    silent : bool, optional
+        Print dataframe output. Default is True
+    return_peaks_only : bool, optional
+        Return only a dictionary with peak details (output of get_peaks_ldr function) instead of a dataframe. Default is False.
+    suppress_fig : bool, optional
+        If true, do not print a figure of gating and density plot. Default is false (print figure).
+
+    Returns
+    -------
+        A pandas dataframe with the live/dead LDR gating value for the well, along with info on which method was used.
+
+    """
     ldrint = ldrint.copy()
     ldrint = ldrint[ldrint > 0]
     logint = np.log10(ldrint)
@@ -818,7 +888,7 @@ def get_ldrgates_new(ldrint, smoothing=1, show=False, first_peak_min=float('-inf
         kde = sns.kdeplot(logint, bw_adjust=smoothing)
         x, y = kde.get_lines()[0].get_data()
         plt.close()
-    alive_dead_peaks = get_peaks_ldr(x.copy(), y.copy(), smoothing=smoothing, first_peak_min=first_peak_min,
+    alive_dead_peaks = get_peaks_ldr(x.copy(), y.copy(), first_peak_min=first_peak_min,
                                     min_prominence=min_prominence, min_peak_height=min_peak_height,
                                     min_peak_distance=min_peak_distance, single_peak_cutoff=single_peak_cutoff,
                                     silent=silent)
@@ -851,7 +921,7 @@ def get_ldrgates_new(ldrint, smoothing=1, show=False, first_peak_min=float('-inf
             ldr_cutoff_valley=ldr_cutoff
             ldr_cutoff_middle=ldr_cutoff
     elif len(peak_ldrs) > 1:
-        if return_peaks_only: return({'peak_ldrs':peak_ldrs, 'peak_props':peak_props})
+        #if return_peaks_only: return({'peak_ldrs':peak_ldrs, 'peak_props':peak_props})
         ###### Note: write up this section as a new function: "get_ldr_cutoff"
         ldr_cutoff_mixture = get_ldr_cutoff_mixture(logint.copy(), peak_ldrs, show=show, silent=silent)
         ldr_cutoff_valley = get_ldr_cutoff_valley(x,y, peak_ldrs, silent=silent)
@@ -877,11 +947,121 @@ def get_ldrgates_new(ldrint, smoothing=1, show=False, first_peak_min=float('-inf
     if not silent: print(out)
     return(out)
 
+def get_ldr_cutoff_mixture(logint, peak_ldrs, show=True, mean_tol=0.4, silent=False):
+    #print("get_ldr_cutoff_mixture")
+    logint = logint.copy()
+    peak_ldrs=peak_ldrs.copy()
+    ### mixture model
+    X = np.array(logint).reshape(-1,1)
+    X = torch.tensor(X).float()
+    try:
+        #print("model fitting")
+        #print(peak_ldrs[0])
+        #print(peak_ldrs[1])
+        m1 = torch.tensor(peak_ldrs[0])
+        m2 = torch.tensor(peak_ldrs[1])
+        #m1.frozen=True
+        #m2.frozen=True
+        d1 = Normal(means=[m1], frozen = False)
+        d2 = Normal(means=[m2], frozen = False)
+        #d1.frozen=torch.tensor(True)
+        #d2.frozen=torch.tensor(True)
+        d3 = [d1,d2]
+        priors = np.empty((len(X), 2))
+        for i in range(len(priors)):
+            if X[i][0] < peak_ldrs[0]+0.5:
+                priors[i][0] = 1
+                priors[i][1] = 0
+            elif X[i][0] > peak_ldrs[1]-0.5:
+                priors[i][0] = 0
+                priors[i][1] = 1
+            else:
+                priors[i][0] = 0.5
+                priors[i][1] = 0.5
+        model = GeneralMixtureModel(d3, verbose=False, frozen=False, tol=0.001, max_iter=100, inertia=0.9).fit(X, priors=priors)
+    except:
+        if not silent: print("mixture model failed")
+        return(float('nan'))
+    try:
+        ldr_cutoff = get_mixture_cutoff(model, silent=True)
+    except:
+        if not silent: print("get mixture cutoff failed")
+        return(float('nan'))
+    if show:
+        try:
+            x = np.arange(np.min(logint), np.max(logint), 0.1)
+            y1 = model.distributions[0].probability(x.reshape(-1, 1))
+            y2 = model.distributions[1].probability(x.reshape(-1, 1))
+            y3 = model.probability(x.reshape(-1, 1))
+            #fig, ax = plt.subplots()
+            plt.figure(figsize=(6, 3))
+            plt.hist(X[:,0], density=True, bins=30)
+            plt.plot(x, y1, color = "green", label="Normal1")
+            plt.axvline(peak_ldrs[0], color="green", label="live peak")
+            plt.plot(x, y2, color = "red", label="Normal2")
+            plt.axvline(peak_ldrs[1], color="red", label="dead peak")
+            plt.plot(x, y3, color = "purple", label="Mixture")
+            plt.axvline(ldr_cutoff, color="orange", label="LDR cutoff")
+            plt.legend(loc=(1.05, 0.4))
+            plt.tight_layout()
+            plt.show()
+        except:
+            if not silent: print("plotting mixture model failed")
+            return(float('nan'))
+    mean1 = model.distributions[0].means.item()
+    mean2 = model.distributions[1].means.item()
+    check1 = abs(mean1-peak_ldrs[0]) < mean_tol
+    check2 = abs(mean2-peak_ldrs[1]) < mean_tol
+    check3 = ldr_cutoff > peak_ldrs[0] and ldr_cutoff < peak_ldrs[1]
+    if(check1 and check2 and check3):
+        return(ldr_cutoff)
+    else:
+        if not silent: print("mixture model fitting failed")
+        return(float('nan'))
+
+
+def get_ldr_cutoff_valley(x,y, peak_ldrs, silent=False):
+    x=x.copy()
+    y=y.copy()
+    peak_ldrs=peak_ldrs.copy()
+    ### find valley in between two most prominent peaks
+    x_sub = [val for val in x if val < peak_ldrs[1] and val > peak_ldrs[0] ]
+    y_sub = [val for val in y if val < peak_ldrs[1] and val > peak_ldrs[0] ]
+    y_sub_neg = [-val for val in y_sub]
+    valley_locs, valley_props = find_peaks(y_sub_neg, height=float('-Inf'), prominence=0)
+    if len(valley_locs) > 0:
+        ### get "peak" with maximum height -- all "peaks" will have negative height, so this will give the lowest valley
+        valley_ldrs = [ y_sub[loc] for loc in valley_locs ]
+        ldr_cutoff = np.max(valley_ldrs)
+        return(ldr_cutoff)
+    else:
+        if not silent: print("valley method failed")
+        return(float('nan'))
+
+### LDR gating helper functions ------------
+
 ### main peak finding function
 # inputs: x,y from sns.kdeplot output
-def get_peaks_ldr(x, y, smoothing=1, first_peak_min=0.5,
+def get_peaks_ldr(x, y, first_peak_min=0.5,
                  min_prominence=0, min_peak_height=0.02, min_peak_distance=0.5,
                  single_peak_cutoff=3, silent=True):
+    """
+    x : numpy ndarray of floats
+        A list of x-coordinates from the density plot of LDR values (returned from sns.kdeplot)
+    y : numpy ndarray of floats
+        A list of x-coordinates from the density plot of LDR values (returned from sns.kdeplot)
+    first_peak_min : float, optional
+
+    min_prominence : float, optional
+    min_peak_height : float, optional
+    min_peak_distance : float, optional
+    single_peak_cutoff : float, optional
+
+    silent : bool, optional
+        Print which peaks found in LDR density plot. Default is True.
+
+
+    """
     x=x.copy()
     y=y.copy()
     peak_locs, peak_props = find_peaks(y.copy(), height=0, prominence=0)
@@ -921,7 +1101,8 @@ def get_peaks_ldr(x, y, smoothing=1, first_peak_min=0.5,
     if secondary_peak_index is None:
         if not silent: print("search for shelf")
         ### search for a shelf if no secondary peak found
-        shelf_dict = find_shelf(x.copy(), y.copy(), main_peak_ldr=peak_ldrs[main_peak_index], 
+        shelf_dict = find_shelf(x.copy(), y.copy(), main_peak_ldr=peak_ldrs[main_peak_index],
+                                single_peak_cutoff=single_peak_cutoff,
                                 min_peak_height=min_peak_height,first_peak_min=first_peak_min)
         indexes = [main_peak_index]
         peak_locs = [peak_locs[ind] for ind in indexes]
@@ -1034,99 +1215,6 @@ def find_shelf(x, y, main_peak_ldr, min_peak_distance=1, single_peak_cutoff=3, t
     else:
         return(None)
 
-def get_ldr_cutoff_mixture(logint, peak_ldrs, show=True, mean_tol=0.4, silent=False):
-    #print("get_ldr_cutoff_mixture")
-    logint = logint.copy()
-    peak_ldrs=peak_ldrs.copy()
-    ### mixture model
-    X = np.array(logint).reshape(-1,1)
-    X = torch.tensor(X).float()
-    try:
-        #print("model fitting")
-        #print(peak_ldrs[0])
-        #print(peak_ldrs[1])
-        m1 = torch.tensor(peak_ldrs[0])
-        m2 = torch.tensor(peak_ldrs[1])
-        #m1.frozen=True
-        #m2.frozen=True
-        d1 = Normal(means=[m1], frozen = False)
-        d2 = Normal(means=[m2], frozen = False)
-        #d1.frozen=torch.tensor(True)
-        #d2.frozen=torch.tensor(True)
-        d3 = [d1,d2]
-        priors = np.empty((len(X), 2))
-        for i in range(len(priors)):
-            if X[i][0] < peak_ldrs[0]+0.5:
-                priors[i][0] = 1
-                priors[i][1] = 0
-            elif X[i][0] > peak_ldrs[1]-0.5:
-                priors[i][0] = 0
-                priors[i][1] = 1
-            else:
-                priors[i][0] = 0.5
-                priors[i][1] = 0.5
-        model = GeneralMixtureModel(d3, verbose=False, frozen=False, tol=0.001, max_iter=100, inertia=0.9).fit(X, priors=priors)
-    except:
-        if not silent: print("mixture model failed")
-        return(float('nan'))
-    try:
-        ldr_cutoff = get_mixture_cutoff(model, silent=True)
-    except:
-        if not silent: print("get mixture cutoff failed")
-        return(float('nan'))
-    if show:
-        try:
-            x = np.arange(np.min(logint), np.max(logint), 0.1)
-            y1 = model.distributions[0].probability(x.reshape(-1, 1))
-            y2 = model.distributions[1].probability(x.reshape(-1, 1))
-            y3 = model.probability(x.reshape(-1, 1))
-            #fig, ax = plt.subplots()
-            plt.figure(figsize=(6, 3))
-            plt.hist(X[:,0], density=True, bins=30)
-            plt.plot(x, y1, color = "green", label="Normal1")
-            plt.axvline(peak_ldrs[0], color="green", label="live peak")
-            plt.plot(x, y2, color = "red", label="Normal2")
-            plt.axvline(peak_ldrs[1], color="red", label="dead peak")
-            plt.plot(x, y3, color = "purple", label="Mixture")
-            plt.axvline(ldr_cutoff, color="orange", label="LDR cutoff")
-            plt.legend(loc=(1.05, 0.4))
-            plt.tight_layout()
-            plt.show()
-        except:
-            if not silent: print("plotting mixture model failed")
-            return(float('nan'))
-    mean1 = model.distributions[0].means.item()
-    mean2 = model.distributions[1].means.item()
-    check1 = abs(mean1-peak_ldrs[0]) < mean_tol
-    check2 = abs(mean2-peak_ldrs[1]) < mean_tol
-    check3 = ldr_cutoff > peak_ldrs[0] and ldr_cutoff < peak_ldrs[1]
-    if(check1 and check2 and check3):
-        return(ldr_cutoff)
-    else:
-        if not silent: print("mixture model fitting failed")
-        return(float('nan'))
-
-
-def get_ldr_cutoff_valley(x,y, peak_ldrs, silent=False):
-    x=x.copy()
-    y=y.copy()
-    peak_ldrs=peak_ldrs.copy()
-    ### find valley in between two most prominent peaks
-    x_sub = [val for val in x if val < peak_ldrs[1] and val > peak_ldrs[0] ]
-    y_sub = [val for val in y if val < peak_ldrs[1] and val > peak_ldrs[0] ]
-    y_sub_neg = [-val for val in y_sub]
-    valley_locs, valley_props = find_peaks(y_sub_neg, height=float('-Inf'), prominence=0)
-    if len(valley_locs) > 0:
-        ### get "peak" with maximum height -- all "peaks" will have negative height, so this will give the lowest valley
-        valley_ldrs = [ y_sub[loc] for loc in valley_locs ]
-        ldr_cutoff = np.max(valley_ldrs)
-        return(ldr_cutoff)
-    else:
-        if not silent: print("valley method failed")
-        return(float('nan'))
-
-
-
 # input x and y from the sns.kdeplot function
 def find_side_shelves(x, y, tol=0.03):
     x = x.copy()
@@ -1144,15 +1232,24 @@ def find_side_shelves(x, y, tol=0.03):
             break
     return({'end_left':end_left_shelf, 'end_right':end_right_shelf})
 
-###### helper functions -----------
+### Data reading helper functions -----------
 
-## Get the filename for well-level intensities for a given barcode and well
-## input:
-##    barcode: a plate barcode, e.g. '210406_combo_71'
-##    well: a well of interest, e.g. 'D06'
-## output:
-##    full path/filename of the well-level data
 def get_well_file(barcode, well, data_dir = ''):
+    """Get the filename for the well-level data for a given well.
+
+    Parameters
+    ----------
+    barcode : str
+        a plate barcode, e.g. '210406_combo_71'
+    well : str
+        a well of interest, e.g. 'D06'
+    data_dir: str, optional
+        The directory containing csv files of fluorescence data for each well. Default is '', the current directory.
+    Returns
+    -------
+        The filename of the csv file for the given well, or errors and prints "well csv not found!".
+
+    """
     #date = date_from_barcode(barcode)
     #data_dir = get_data_dir(barcode)
     ### example file style
@@ -1165,17 +1262,33 @@ def get_well_file(barcode, well, data_dir = ''):
         print("well csv not found!")
     return(well_file)
 
-## Read the well-level data for a given well and barcode
-## input:
-##    barcode: a plate barcode, e.g. '210406_combo_71'
-##    well: a well of interest, e.g. 'D06'
-## output:
-##    a pandas dataframe of dye intensities for individual cells
+
 def read_well_data(barcode, well,
                    plate_data_dir = None,
                    ldr_col_data = 'ldrint',
                    well_col_data = 'Well Name',
                    dna_col_data = 'Cell: DNAcontent (DD-bckgrnd)'):
+    """Read the well-level data for a given well
+
+    Parameters
+    ----------
+    barcode : str
+        a plate barcode, e.g. '210406_combo_71'
+    well : str
+        a well of interest, e.g. 'D06'
+    plate_data_dir: str, optional
+        The directory containing csv files of fluorescence data for each well. Default is None, which gives a folder named after the barcode in the current directory.
+    ldr_col_data: str, optional
+        The name of the column in the well-level csv file containing Live/Dead Red fluorescence data. Default is 'ldrint'.
+    well_col_data: str, optional
+        The name of the column in the well-level csv file containing the well name. Default is 'Well Name'.
+    dna_col_data: str, optional
+        The name of the column in the well-level csv file containing the DNA fluorescence data. Default is 'Cell: DNAcontent (DD-bckgrnd)'.
+    Returns
+    -------
+        A pandas dataframe with dye intensities for individual cells in the given well, with some columns re-named for convenience.
+
+    """
     if plate_data_dir is None:
         plate_data_dir = barcode
     ff = get_well_file(barcode, well, plate_data_dir)
@@ -1190,86 +1303,86 @@ def read_well_data(barcode, well,
 ## Re-name columns of well-level dataframe for LDR, DNA, EDU, etc.
 ## input: original data frame read from csv
 ## output: data frame with re-names columns
-def rename_df_columns(df, silent=True, hoechst_as_dna=False):
-    col_dict = {}
-    ### check for well name
-    if 'Well Name' in df.columns:
-        if not silent: print("'Well Name' column found -- re-naming as 'well'")
-        col_dict['Well Name'] = 'well'
-    else:
-        print(df.columns)
-        if not silent: print('Well Name column not found')
-        return(df)
-    ### check for LDRint
-    if 'ldrint' in df.columns:
-        if not silent: print("'ldrint' column found -- re-naming as 'ldr'")
-        col_dict['ldrint'] = 'ldr'
-    else:
-        print(df.columns)
-        if not silent: print('ldrint column not found')
-        return(df)
-    ### check for DNAcontent/Hoechst
-    dna_col1 = 'Cell: DNAcontent (DD-bckgrnd)'
-    dna_col2 = 'Cell: DNAcontent (DDD-bckgrnd)'
-    hoechst1 = 'Cell: HoechstINT (DD-bckgrnd)'
-    hoechst2 = 'Cell: HoechstINT (DDD-bckgrnd)'
-    check_dna1 = dna_col1 in df.columns
-    check_dna2 = dna_col2 in df.columns
-    check_hoechst1 = hoechst1 in df.columns
-    check_hoechst2 = hoechst2 in df.columns
-    if not (check_dna1 or check_dna2 or check_hoechst1 or check_hoechst2):
-        if not silent: print(df.columns)
-        if not silent: print('DNA column not found')
-    else:
-        ### if hoechst_as_dna, use the HoechstINT column as DNA if available
-        if hoechst_as_dna:
-            if check_hoechst1 and check_hoechst2:
-                print('Warning: Two HoechstINT columns -- using ' + "'"+hoechst2+"'")
-                dna_col = hoechst2
-            elif check_hoechst1: dna_col = hoechst1
-            elif check_hoechst2: dna_col = hoechst2
-            elif check_dna1 and check_dna2:
-                print('Warning: Two DNAcontent columns -- using ' + "'"+dna_col2+"'")
-                dna_col = dna_col2
-            elif check_dna1: dna_col = dna_col1
-            elif check_dna2: dna_col = dna_col2
-        ### otherwise use DNAConent column as DNA
-        else:
-            if check_dna1 and check_dna2:
-                print('Warning: Two DNAcontent columns -- using ' + "'"+dna_col2+"'")
-                dna_col = dna_col2
-            elif check_dna1: dna_col = dna_col1
-            elif check_dna2: dna_col = dna_col2
-            elif check_hoechst1 and check_hoechst2:
-                print('Warning: Two HoechstINT columns -- using ' + "'"+hoechst2+"'")
-                dna_col = hoechst2
-            elif check_hoechst1: dna_col = hoechst1
-            elif check_hoechst2: dna_col = hoechst2
-        if not silent: print("'"+dna_col+"'"+" column found -- re-naming as 'dna'")
-        col_dict[dna_col] = 'dna'
-    ### check for Edu (raw)
-    if 'Cell: EdUrawINT (DDD-bckgrnd)' in df.columns:
-        if not silent: print("'Cell: EdUrawINT (DDD-bckgrnd)' column found -- re-naming as 'edu_raw'")
-        col_dict['Cell: EdUrawINT (DDD-bckgrnd)'] = 'edu_raw'
-    elif 'Cell: EdUrawINT (DD-bckgrnd)' in df.columns:
-        if not silent: print("'Cell: EdUrawINT (DD-bckgrnd)' column found -- re-naming as 'edu_raw'")
-        col_dict['Cell: EdUrawINT (DD-bckgrnd)'] = 'edu_raw'
-    ### check for Edu (background)
-    if 'Cell: EdUbackground (DDD-bckgrnd)' in df.columns:
-        if not silent: print("'Cell: EdUbackground (DDD-bckgrnd)' column found -- re-naming as 'edu_bg'")
-        col_dict['Cell: EdUbackground (DDD-bckgrnd)'] = 'edu_bg'
-    elif 'Cell: EdUbackground (DD-bckgrnd)' in df.columns:
-        if not silent: print("'Cell: EdUbackground (DD-bckgrnd)' column found -- re-naming as 'edu_bg'")
-        col_dict['Cell: EdUbackground (DD-bckgrnd)'] = 'edu_bg'
-    ### re-name data-frame columns
-    df = df.rename(columns=col_dict)
-    if 'edu_raw' in df.columns and 'edu_bg' in df.columns:
-        df['edu'] = df.edu_raw - df.edu_bg
-    df['dna_colname'] = dna_col
-    return(df)
+# def rename_df_columns(df, silent=True, hoechst_as_dna=False):
+#     col_dict = {}
+#     ### check for well name
+#     if 'Well Name' in df.columns:
+#         if not silent: print("'Well Name' column found -- re-naming as 'well'")
+#         col_dict['Well Name'] = 'well'
+#     else:
+#         print(df.columns)
+#         if not silent: print('Well Name column not found')
+#         return(df)
+#     ### check for LDRint
+#     if 'ldrint' in df.columns:
+#         if not silent: print("'ldrint' column found -- re-naming as 'ldr'")
+#         col_dict['ldrint'] = 'ldr'
+#     else:
+#         print(df.columns)
+#         if not silent: print('ldrint column not found')
+#         return(df)
+#     ### check for DNAcontent/Hoechst
+#     dna_col1 = 'Cell: DNAcontent (DD-bckgrnd)'
+#     dna_col2 = 'Cell: DNAcontent (DDD-bckgrnd)'
+#     hoechst1 = 'Cell: HoechstINT (DD-bckgrnd)'
+#     hoechst2 = 'Cell: HoechstINT (DDD-bckgrnd)'
+#     check_dna1 = dna_col1 in df.columns
+#     check_dna2 = dna_col2 in df.columns
+#     check_hoechst1 = hoechst1 in df.columns
+#     check_hoechst2 = hoechst2 in df.columns
+#     if not (check_dna1 or check_dna2 or check_hoechst1 or check_hoechst2):
+#         if not silent: print(df.columns)
+#         if not silent: print('DNA column not found')
+#     else:
+#         ### if hoechst_as_dna, use the HoechstINT column as DNA if available
+#         if hoechst_as_dna:
+#             if check_hoechst1 and check_hoechst2:
+#                 print('Warning: Two HoechstINT columns -- using ' + "'"+hoechst2+"'")
+#                 dna_col = hoechst2
+#             elif check_hoechst1: dna_col = hoechst1
+#             elif check_hoechst2: dna_col = hoechst2
+#             elif check_dna1 and check_dna2:
+#                 print('Warning: Two DNAcontent columns -- using ' + "'"+dna_col2+"'")
+#                 dna_col = dna_col2
+#             elif check_dna1: dna_col = dna_col1
+#             elif check_dna2: dna_col = dna_col2
+#         ### otherwise use DNAConent column as DNA
+#         else:
+#             if check_dna1 and check_dna2:
+#                 print('Warning: Two DNAcontent columns -- using ' + "'"+dna_col2+"'")
+#                 dna_col = dna_col2
+#             elif check_dna1: dna_col = dna_col1
+#             elif check_dna2: dna_col = dna_col2
+#             elif check_hoechst1 and check_hoechst2:
+#                 print('Warning: Two HoechstINT columns -- using ' + "'"+hoechst2+"'")
+#                 dna_col = hoechst2
+#             elif check_hoechst1: dna_col = hoechst1
+#             elif check_hoechst2: dna_col = hoechst2
+#         if not silent: print("'"+dna_col+"'"+" column found -- re-naming as 'dna'")
+#         col_dict[dna_col] = 'dna'
+#     ### check for Edu (raw)
+#     if 'Cell: EdUrawINT (DDD-bckgrnd)' in df.columns:
+#         if not silent: print("'Cell: EdUrawINT (DDD-bckgrnd)' column found -- re-naming as 'edu_raw'")
+#         col_dict['Cell: EdUrawINT (DDD-bckgrnd)'] = 'edu_raw'
+#     elif 'Cell: EdUrawINT (DD-bckgrnd)' in df.columns:
+#         if not silent: print("'Cell: EdUrawINT (DD-bckgrnd)' column found -- re-naming as 'edu_raw'")
+#         col_dict['Cell: EdUrawINT (DD-bckgrnd)'] = 'edu_raw'
+#     ### check for Edu (background)
+#     if 'Cell: EdUbackground (DDD-bckgrnd)' in df.columns:
+#         if not silent: print("'Cell: EdUbackground (DDD-bckgrnd)' column found -- re-naming as 'edu_bg'")
+#         col_dict['Cell: EdUbackground (DDD-bckgrnd)'] = 'edu_bg'
+#     elif 'Cell: EdUbackground (DD-bckgrnd)' in df.columns:
+#         if not silent: print("'Cell: EdUbackground (DD-bckgrnd)' column found -- re-naming as 'edu_bg'")
+#         col_dict['Cell: EdUbackground (DD-bckgrnd)'] = 'edu_bg'
+#     ### re-name data-frame columns
+#     df = df.rename(columns=col_dict)
+#     if 'edu_raw' in df.columns and 'edu_bg' in df.columns:
+#         df['edu'] = df.edu_raw - df.edu_bg
+#     df['dna_colname'] = dna_col
+#     return(df)
 
-def read_and_rename_well_data(barcode, well, silent = False, hoechst_as_dna=False):
-    #if len(barcode) in [2,3]: barcode = barcode_from_number(barcode)
-    df = read_well_data(barcode, well)
-    df = rename_df_columns(df, silent = silent, hoechst_as_dna=hoechst_as_dna)
-    return(df)
+# def read_and_rename_well_data(barcode, well, silent = False, hoechst_as_dna=False):
+#     #if len(barcode) in [2,3]: barcode = barcode_from_number(barcode)
+#     df = read_well_data(barcode, well)
+#     df = rename_df_columns(df, silent = silent, hoechst_as_dna=hoechst_as_dna)
+#     return(df)

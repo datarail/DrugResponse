@@ -1,0 +1,20 @@
+channels:
+  - defaults
+  - pytorch
+dependencies:
+  - python=3.10.10
+  - cpuonly
+  - pytorch
+  - pandas=2.0.2
+  - numpy=1.23.0
+  - seaborn=0.11.0
+  - scipy=1.11.2
+  - matplotlib=3.7.1
+  - setuptools
+  - mock
+  - ipywidgets=8.0.6
+  - git
+  - jupyterlab
+  - nb_conda
+  - pip
+  - pomegranate=1.0.0
