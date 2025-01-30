@@ -12,6 +12,7 @@ from cell_cycle_gating.findpeaks import get_kde, findpeaks
 from cell_cycle_gating import smooth
 from scipy.stats.mstats import mquantiles as quantile
 import matplotlib.pyplot as plt
+from cell_cycle_gating import manual_gating as mg
 
 from pomegranate.gmm import GeneralMixtureModel
 from pomegranate.distributions import *
@@ -449,6 +450,9 @@ def summary_peak_val(batch, ndict):
 
 def get_counts_plate_batch(
         df,
+        main_dir = "",
+        well_file_ending = 'test].csv',
+        output_dir="results",
         barcode_col_design= 'barcode', 
         cell_line_col_design = 'cell_line', 
         well_col_design = 'well',
@@ -456,16 +460,23 @@ def get_counts_plate_batch(
         well_col_data = 'Well Name',
         dna_col_data = 'Cell: DNAcontent (DD-bckgrnd)',
         output_pdf = True,
-        n_wells = None, 
-        output_dir="",
+        n_wells = None,
+        metadata_cols = [],
+        new_gating_algorithm = True,
+        ### options for old gating algorithm (get_ldrgates function)
+        peak_loc = float('-inf'),
+        ### options for new gating algorithm (get_ldrgates_new function)
         smoothing=1,
+        first_peak_min=float('-inf'),
+        min_prominence=0,
+        min_peak_height=0.02,
+        min_peak_distance=0.5,
+        single_peak_cutoff=3,
+        ### options for joint gating
         add_ldr_line = False, 
         add_median_ldr_line = True,
-        new_gating_algorithm = True, 
-        metadata_cols = [],
-        peak_loc = float('-inf'), 
-        main_dir = "", 
-        well_file_ending = 'test].csv'
+        window_size = 0,
+        testing = False
         ):
     """Get live/dead cell counts for all plates and wells listed in a design layout file.
     The function loops over the plates and gates them one by one. It considers all wells of the same cell line on the same plate to be a group, first finding gates for them individually, then selecting the median of these gates as the final gate for the group.
@@ -474,6 +485,12 @@ def get_counts_plate_batch(
     ----------
     df : pd.DataFrame
        This is a dataframe with the design layout (i.e. metadata) for the plates that need to be gated. It must have columns listing the plate barcodes (e.g. "201117_combo_12"), well names (e.g. "A01"), and cell_line (e.g. "HCC70").
+    main_dir : str
+        Directory with LDR Fluorescence data for each plate. The structure should be [main_dir]/[barcode]/[well_fluorescence_csv_files]. Default is the current directory.
+    well_file_ending : str
+        File ending that identifies files with data for each well. Default is 'test].csv'.
+    output_dir : str, optional
+        Directory for the output. Default is a directory called "results" in the current directory.
     barcode_col_design : str, optional
         The name of the column in the design dataframe (df) with the plate barcodes. Default is "barcode".
     cell_line_col_design : str, optional
@@ -490,24 +507,32 @@ def get_counts_plate_batch(
         Whether to output a pdf with plots of gating for each well or not. Default is True.
     n_wells : int, optional
         If None, then all wells will be gated, otherwise only the first "n_wells" will be gated. This is included mostly for testing purposes. Default is None (gating all wells).
-    output_dir : str, optional
-        Directory for the output. Default is the current directory.
+    metadata_cols : list of str, optional
+        Other metadata columns in the design dataframe. Default is an empty list: [].
+    new_gating_algorithm : bool, optional
+        Whether to use the updated gating algorithm (implemented by Nick Clark, Jan. 2025) or not. This algorithm makes the gating of individual wells much more robust for edge cases (e.g. small blip in the density function, "shelf" rather than "valley" between live and dead peaks) and finds an optimal gate by fitting a Gaussian mixture model. To make the gating even more robust, it then finds the median gate for each group of wells (same cell line, same plate) and uses this gate for the group. Default is True.
+    peak_loc : float
+        Fluorescence value to start at when looking for peaks. Setting this parameter can sometimes help when gating functions find "false peaks" or blips in the density function before the true live/dead peaks. Default is float('-inf'), i.e. this parameter is not used by default. This parameter was more useful with previous gating methods, but with the updated gating methods it is not necessary.
     smoothing : float, optional
         Amount of "smoothing" to use for the kernel density function when gating. Default is 1.
+    first_peak_min : float, optional
+        Minimum fluorescence value to start looking for live/dead peaks in the LDR density plot. Default is negative infinity, float('-inf').
+    min_prominence : float, optional
+        The minimum "prominence" (returned by scipy.signal.find_peaks) of a peak (live or dead) in the LDR fluorescence data required. Smaller peaks are ignored. Default is 0 (i.e. do not exclude any peaks based on prominence).
+    min_peak_height : float, optional
+        The minimum height (returned by scipy.signal.find_peaks) of a peak (live or dead) in the LDR fluorescence data required. Smaller peaks are ignored. Default is 0.02 (ignores small blips in the density plots).
+    min_peak_distance : float, optional
+        The minimum distance from the highest peak (live or dead) in the LDR fluorescence data to look for a second peak. Default is 0.5 (ignores peaks that are too close to eachother).
+    single_peak_cutoff : float, optional
+        If only one peak is detected, the LDR cutoff value that decides whether to call it a live peak or a dead peak. Default is 3, meaning if a single peak is detected at LDR value less than 3, it is assumed that it is the live peak (99% of cells assumed alive). Otherwise it is assumed to be the dead peak (99% of cells dead).
     add_ldr_line : bool, optional
         Whether to include lines to show Live/Dead Red gating for each individual well. This usually looks messy, so default is False.
     add_median_ldr_line : bool, optional
         Whether to include a line showing the median Live/Dead Red gating across wells in a group (same cell line, same plate). Default is True.
-    new_gating_algorithm : bool, optional
-        Whether to use the updated gating algorithm (implemented by Nick Clark, Jan. 2025) or not. This algorithm makes the gating of individual wells much more robust for edge cases (e.g. small blip in the density function, "shelf" rather than "valley" between live and dead peaks) and finds an optimal gate by fitting a Gaussian mixture model. To make the gating even more robust, it then finds the median gate for each group of wells (same cell line, same plate) and uses this gate for the group. Default is True.
-    metadata_cols : list of str, optional
-        Other metadata columns in the design dataframe. Default is an empty list: [].
-    peak_loc : float
-        Fluorescence value to start at when looking for peaks. Setting this parameter can sometimes help when gating functions find "false peaks" or blips in the density function before the true live/dead peaks. Default is float('-inf'), i.e. this parameter is not used by default. This parameter was more useful with previous gating methods, but with the updated gating methods it is not necessary.
-    main_dir : str
-        Directory with LDR Fluorescence data for each plate. The structure should be [main_dir]/[barcode]/[well_fluorescence_csv_files]. Default is the current directory.
-    well_file_ending : str
-        File ending that identifies files with data for each well. Default is 'test].csv'.
+    window_size : float, optional
+        If this parameter is zero, the live/dead gate for each well is set to be the median of all of the gates for individual wells. If a positive number, it allows a small "window" around the median gate where gates for individual wells can differ slightly.
+    testing : bool, optional
+        If True, the output dataframe will contain extra columns with gating info. Default is False.
         
     Returns
     -------
@@ -516,27 +541,40 @@ def get_counts_plate_batch(
     barcodes = df[barcode_col_design].unique().tolist()
     df_list = []
     for barcode in barcodes:
+        print(barcode)
         qq = "barcode == " + "'" + barcode + "'"
         df_tmp = df.query(qq)
         df = df[df[cell_line_col_design].notna()]
-        fname = barcode + "_ldr_plot" + ".pdf"
+        #fname = barcode + "_ldr_plot" + ".pdf"
         plate_dir = os.path.join(main_dir, barcode)
-        df_tmp = get_counts_plate(df_tmp, barcode,
+        df_tmp = get_counts_plate(
+            df_tmp, 
+            barcode,
             barcode_col_design=barcode_col_design,
             cell_line_col_design=cell_line_col_design,
-                       well_col_design=well_col_design, ldr_col_data=ldr_col_data,
-                       well_col_data = well_col_data,
-                       dna_col_data = dna_col_data,
-                       output_pdf=output_pdf,
-                       n_wells=n_wells, output_dir=output_dir, filename=fname,
-                       smoothing=smoothing, add_ldr_line=add_ldr_line, 
-                       add_median_ldr_line=add_median_ldr_line,
-                       new_gating_algorithm=new_gating_algorithm,
-                       metadata_cols = metadata_cols,
-                       peak_loc=peak_loc,
-                       plate_data_dir = plate_dir,
-                       well_file_ending = well_file_ending
-                       )
+            well_col_design=well_col_design,
+            ldr_col_data=ldr_col_data,
+            well_col_data = well_col_data,
+            dna_col_data = dna_col_data,
+            output_pdf=output_pdf,
+            n_wells=n_wells,
+            output_dir=output_dir,
+            smoothing=smoothing, 
+            add_ldr_line=add_ldr_line, 
+            add_median_ldr_line=add_median_ldr_line,
+            new_gating_algorithm=new_gating_algorithm,
+            metadata_cols = metadata_cols,
+            peak_loc=peak_loc,
+            plate_data_dir = plate_dir,
+            well_file_ending = well_file_ending,
+            first_peak_min=first_peak_min,
+            min_prominence=min_prominence,
+            min_peak_height=min_peak_height,
+            min_peak_distance=min_peak_distance,
+            single_peak_cutoff=single_peak_cutoff,
+            window_size = window_size,
+            testing = testing
+            )
         df_list.append(df_tmp)
     df_full = pd.concat(df_list)
     df_full = df_full.reset_index(drop=True)
@@ -554,10 +592,10 @@ def get_counts_plate(
         well_col_data = 'Well Name',
         dna_col_data = 'Cell: DNAcontent (DD-bckgrnd)',
         output_pdf = True,
-        n_wells = None, output_dir="",
-        add_ldr_line = False, add_median_ldr_line = True,
-        new_gating_algorithm = True,
+        n_wells = None, 
+        output_dir="results",
         metadata_cols = [],
+        new_gating_algorithm = True,
         ### options for old gating algorithm (get_ldrgates function)
         peak_loc = float('-inf'),
         ### options for new gating algorithm (get_ldrgates_new function)
@@ -570,6 +608,8 @@ def get_counts_plate(
         silent=True,
         return_peaks_only=False,
         ### options for joint gating
+        add_ldr_line = False, 
+        add_median_ldr_line = True,
         window_size = 0,
         testing = False
         ):
@@ -603,17 +643,13 @@ def get_counts_plate(
     n_wells : int, optional
         If None, then all wells will be gated, otherwise only the first "n_wells" will be gated. This is included mostly for testing purposes. Default is None (gating all wells).
     output_dir : str, optional
-        Directory for the output. Default is the current directory.
+        Directory for the output. Default is a directory called "results" in the current directory.
     smoothing : float, optional
         Amount of "smoothing" to use for the kernel density function when gating. Default is 1.
-    add_ldr_line : bool, optional
-        Whether to include lines to show Live/Dead Red gating for each individual well. This usually looks messy, so default is False.
-    add_median_ldr_line : bool, optional
-        Whether to include a line showing the median Live/Dead Red gating across wells in a group (same cell line, same plate). Default is True.
-    new_gating_algorithm : bool, optional
-        Whether to use the updated gating algorithm (implemented by Nick Clark, Jan. 2025) or not. This algorithm makes the gating of individual wells much more robust for edge cases (e.g. small blip in the density function, "shelf" rather than "valley" between live and dead peaks) and finds an optimal gate by fitting a Gaussian mixture model. To make the gating even more robust, it then finds the median gate for each group of wells (same cell line, same plate) and uses this gate for the group. Default is True.
     metadata_cols : list of str, optional
         Other metadata columns in the design dataframe. Default is an empty list: [].
+    new_gating_algorithm : bool, optional
+        Whether to use the updated gating algorithm (implemented by Nick Clark, Jan. 2025) or not. This algorithm makes the gating of individual wells much more robust for edge cases (e.g. small blip in the density function, "shelf" rather than "valley" between live and dead peaks) and finds an optimal gate by fitting a Gaussian mixture model. To make the gating even more robust, it then finds the median gate for each group of wells (same cell line, same plate) and uses this gate for the group. Default is True.
     peak_loc : float
         Fluorescence value to start at when looking for peaks. Setting this parameter can sometimes help when gating functions find "false peaks" or blips in the density function before the true live/dead peaks. Default is float('-inf'), i.e. this parameter is not used by default. This parameter was more useful with previous gating methods, but with the updated gating methods it is not necessary.
     smoothing: float, optional
@@ -632,6 +668,10 @@ def get_counts_plate(
         Print dataframe output for each well. Default is True (no printing).
     return_peaks_only : bool, optional
         Return only a dictionary with peak details (output of get_peaks_ldr function) instead of a dataframe. Default is False.
+    add_ldr_line : bool, optional
+        Whether to include lines to show Live/Dead Red gating for each individual well. This usually looks messy, so default is False.
+    add_median_ldr_line : bool, optional
+        Whether to include a line showing the median Live/Dead Red gating across wells in a group (same cell line, same plate). Default is True.
     window_size : float, optional
         If this parameter is zero, the live/dead gate for each well is set to be the median of all of the gates for individual wells. If a positive number, it allows a small "window" around the median gate where gates for individual wells can differ slightly.
     testing : bool, optional
@@ -643,6 +683,8 @@ def get_counts_plate(
     """
     if plate_data_dir is None:
         plate_data_dir = barcode
+    if not os.path.isdir(output_dir):
+        os.mkdir(output_dir)
     filename = barcode + "_LDR_gating.pdf"
     qq = "barcode == " + "'" + barcode + "'"
     df = df.query(qq)
@@ -685,7 +727,7 @@ def get_counts_plate(
             wells = df_small['well'].unique().tolist()
             if n_wells is not None: wells = wells[0:n_wells]
             ax = axs[row,col]
-            print(cell_line)
+            print("\t"+cell_line)
             ### initialize a list and dict for outputs from ldr gating function
             df_list = []
             #props_dict = {}
@@ -824,7 +866,10 @@ def get_counts_plate(
         cols = ['well', 'barcode', 'cell_line'] + metadata_cols + ['ldr_cutoff_final'] + phase_cols + cell_count_cols
         res_df_full = res_df_full.filter(items = cols)
         res_df_full.rename(columns={'ldr_cutoff_final':'ldr_cutoff'}, inplace=True)
-    
+    csv_filename = barcode + ".csv"
+    parquet_filename = barcode + ".parquet"
+    res_df_full.to_csv(os.path.join(output_dir, csv_filename), index=False)
+    res_df_full.to_parquet(os.path.join(output_dir, parquet_filename), index=False)
     #results = {'df': res_df_full, 'peak_props': props_dict}
     return(res_df_full)
 
@@ -871,7 +916,7 @@ def get_ldrgates_new(
 
     Returns
     -------
-        A pandas dataframe with the live/dead LDR gating value for the well, along with info on which method was used.
+        A dictionary with the live/dead LDR gating value for the well, along with info on which method was used.
 
     """
     ldrint = ldrint.copy()
@@ -1386,3 +1431,4 @@ def read_well_data(barcode, well,
 #     df = read_well_data(barcode, well)
 #     df = rename_df_columns(df, silent = silent, hoechst_as_dna=hoechst_as_dna)
 #     return(df)
+
