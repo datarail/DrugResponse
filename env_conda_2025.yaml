@@ -17,6 +17,7 @@ dependencies:
   - jupyterlab
   - nb_conda
   - pomegranate=1.0.0
+  - fastparquet
   - pip
   - pip:
     - "--editable=git+https://github.com/datarail/datarail.git#egg=datarail"
