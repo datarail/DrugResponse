@@ -17,6 +17,7 @@ from cell_cycle_gating import manual_gating as mg
 from pomegranate.gmm import GeneralMixtureModel
 from pomegranate.distributions import *
 import torch
+import glob
 
 
 
@@ -449,14 +450,15 @@ def summary_peak_val(batch, ndict):
 ###### Functions for new gating methods below (written by Nick Clark, January 2025) ----------------
 
 def get_counts_plate_batch(
-        df,
+        design_df,
         main_dir = "",
         well_file_ending = 'test].csv',
         output_dir="results",
         barcode_col_design= 'barcode', 
         cell_line_col_design = 'cell_line', 
         well_col_design = 'well',
-        ldr_col_data = 'ldrint', 
+        #ldr_col_data = 'ldrint',
+        ldr_col_data = 'ldrint',
         well_col_data = 'Well Name',
         dna_col_data = 'Cell: DNAcontent (DD-bckgrnd)',
         output_pdf = True,
@@ -474,7 +476,7 @@ def get_counts_plate_batch(
         single_peak_cutoff=3,
         ### options for joint gating
         add_ldr_line = False, 
-        add_median_ldr_line = True,
+        add_consensus_ldr_line = True,
         window_size = 0,
         testing = False
         ):
@@ -483,7 +485,7 @@ def get_counts_plate_batch(
 
     Parameters
     ----------
-    df : pd.DataFrame
+    design_df : pd.DataFrame
        This is a dataframe with the design layout (i.e. metadata) for the plates that need to be gated. It must have columns listing the plate barcodes (e.g. "201117_combo_12"), well names (e.g. "A01"), and cell_line (e.g. "HCC70").
     main_dir : str
         Directory with LDR Fluorescence data for each plate. The structure should be [main_dir]/[barcode]/[well_fluorescence_csv_files]. Default is the current directory.
@@ -527,7 +529,7 @@ def get_counts_plate_batch(
         If only one peak is detected, the LDR cutoff value that decides whether to call it a live peak or a dead peak. Default is 3, meaning if a single peak is detected at LDR value less than 3, it is assumed that it is the live peak (99% of cells assumed alive). Otherwise it is assumed to be the dead peak (99% of cells dead).
     add_ldr_line : bool, optional
         Whether to include lines to show Live/Dead Red gating for each individual well. This usually looks messy, so default is False.
-    add_median_ldr_line : bool, optional
+    add_consensus_ldr_line : bool, optional
         Whether to include a line showing the median Live/Dead Red gating across wells in a group (same cell line, same plate). Default is True.
     window_size : float, optional
         If this parameter is zero, the live/dead gate for each well is set to be the median of all of the gates for individual wells. If a positive number, it allows a small "window" around the median gate where gates for individual wells can differ slightly.
@@ -538,21 +540,33 @@ def get_counts_plate_batch(
     -------
         A pandas dataframe with the gates and live/dead cell counts for each well for all plates in the batch.
     """
-    barcodes = df[barcode_col_design].unique().tolist()
+    df = design_df
+    df = df.rename(columns={barcode_col_design: 'barcode'})
+    df = df.rename(columns={well_col_design: 'well'})
+    df = df.rename(columns={cell_line_col_design: 'cell_line'})
+    barcodes = df['barcode'].unique().tolist()
     df_list = []
     for barcode in barcodes:
         print(barcode)
         qq = "barcode == " + "'" + barcode + "'"
         df_tmp = df.query(qq)
-        df = df[df[cell_line_col_design].notna()]
+        df = df[df['cell_line'].notna()]
         #fname = barcode + "_ldr_plot" + ".pdf"
-        plate_dir = os.path.join(main_dir, barcode)
+        #plate_dir = os.path.join(main_dir, barcode)
+        plate_dir = main_dir
+        plate_df = read_plate_data(
+            barcode=barcode, 
+            plate_data_dir=plate_dir,
+            ldr_col_data = ldr_col_data, 
+            well_col_data = well_col_data,
+            dna_col_data = dna_col_data)
         df_tmp = get_counts_plate(
-            df_tmp, 
-            barcode,
-            barcode_col_design=barcode_col_design,
-            cell_line_col_design=cell_line_col_design,
-            well_col_design=well_col_design,
+            design_df = df_tmp, 
+            plate_df = plate_df,
+            barcode=barcode,
+            barcode_col_design='barcode',
+            cell_line_col_design='cell_line',
+            well_col_design='well',
             ldr_col_data=ldr_col_data,
             well_col_data = well_col_data,
             dna_col_data = dna_col_data,
@@ -561,7 +575,7 @@ def get_counts_plate_batch(
             output_dir=output_dir,
             smoothing=smoothing, 
             add_ldr_line=add_ldr_line, 
-            add_median_ldr_line=add_median_ldr_line,
+            add_consensus_ldr_line=add_consensus_ldr_line,
             new_gating_algorithm=new_gating_algorithm,
             metadata_cols = metadata_cols,
             peak_loc=peak_loc,
@@ -578,16 +592,24 @@ def get_counts_plate_batch(
         df_list.append(df_tmp)
     df_full = pd.concat(df_list)
     df_full = df_full.reset_index(drop=True)
+    csv_filename = "batch_results.csv"
+    parquet_filename = "batch_results.parquet"
+    df_full.to_csv(os.path.join(output_dir, csv_filename), index=False)
+    df_full.to_parquet(os.path.join(output_dir, parquet_filename), index=False)
     return(df_full)
 
 def get_counts_plate(
-        df, 
+        design_df,
         barcode, 
-        plate_data_dir=None, 
+        gating_method = 'median',
+        plate_df = None,
+        plate_data_dir = None,
+        one_file_per_plate = False,
         well_file_ending = 'test].csv',
         barcode_col_design= 'barcode', 
         cell_line_col_design = 'cell_line', 
         well_col_design = 'well', 
+        #ldr_col_data = 'ldrint',
         ldr_col_data = 'ldrint',
         well_col_data = 'Well Name',
         dna_col_data = 'Cell: DNAcontent (DD-bckgrnd)',
@@ -609,7 +631,7 @@ def get_counts_plate(
         return_peaks_only=False,
         ### options for joint gating
         add_ldr_line = False, 
-        add_median_ldr_line = True,
+        add_consensus_ldr_line = True,
         window_size = 0,
         testing = False
         ):
@@ -618,10 +640,14 @@ def get_counts_plate(
 
     Parameters
     ----------
-    df : pd.DataFrame
+    design_df : pd.DataFrame
        This is a dataframe with the design layout (i.e. metadata) for the plate to be gated. It must have columns listing the plate barcodes (e.g. "201117_combo_12"), well names (e.g. "A01"), and cell_line (e.g. "HCC70").
     barcode : str
         The plate barcode.
+    gating_method : str, optional
+        The method to use to find consensus gates for groups of wells. The default is 'median', which gates each well individually, then uses the median of these gate values as the consensus gate. This seems to provide the most accurate gating, but is very slow. Using the option 'combined' will combine LDR intensity values from all wells in the group and use the density of the full list of values to find the consensus gate. This seems to work almost as well and is much faster as it only gates once versus ~40 times for the other method.
+    plate_df: str, optional
+        A dataframe with the plate-level data. If None, the function will try to read the data from plate_data_dir.
     plate_data_dir : str, optional
         The directory with csv files of LDR fluorescence data for individual wells. Default is None, which means the function will look in [currect directory]/[barcode] for the data files, selecting any that are named ending in 'test].csv'.
     well_file_ending : str
@@ -670,7 +696,7 @@ def get_counts_plate(
         Return only a dictionary with peak details (output of get_peaks_ldr function) instead of a dataframe. Default is False.
     add_ldr_line : bool, optional
         Whether to include lines to show Live/Dead Red gating for each individual well. This usually looks messy, so default is False.
-    add_median_ldr_line : bool, optional
+    add_consensus_ldr_line : bool, optional
         Whether to include a line showing the median Live/Dead Red gating across wells in a group (same cell line, same plate). Default is True.
     window_size : float, optional
         If this parameter is zero, the live/dead gate for each well is set to be the median of all of the gates for individual wells. If a positive number, it allows a small "window" around the median gate where gates for individual wells can differ slightly.
@@ -681,15 +707,31 @@ def get_counts_plate(
     -------
         A pandas dataframe with the gates and live/dead cell counts for each well on the plate. Prints a pdf with gating for each group (cell line) on the plate. Note: It is written write now to assume up to 6 cell lines per plate... may error if there are more.
     """
-    if plate_data_dir is None:
+    df = design_df
+    df = df.rename(columns={barcode_col_design: 'barcode'})
+    df = df.rename(columns={well_col_design: 'well'})
+    df = df.rename(columns={cell_line_col_design: 'cell_line'})
+    extra_cols = [col for col in df.columns if col not in ['well','barcode','cell_line'] ]
+    if plate_data_dir is None and one_file_per_plate:
+        #plate_data_dir = barcode
+        plate_data_dir = ""
+    elif plate_data_dir is None and not one_file_per_plate:
         plate_data_dir = barcode
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)
     filename = barcode + "_LDR_gating.pdf"
+    if plate_df is None:
+        plate_df = read_plate_data(
+            barcode=barcode, 
+            plate_data_dir=plate_data_dir,
+            one_file_per_plate = one_file_per_plate,
+            ldr_col_data = ldr_col_data, 
+            well_col_data = well_col_data,
+            dna_col_data = dna_col_data)
     qq = "barcode == " + "'" + barcode + "'"
     df = df.query(qq)
-    df = df[df[cell_line_col_design].notna()]
-    cell_lines = df[cell_line_col_design].unique().tolist()
+    df = df[df['cell_line'].notna()]
+    cell_lines = df['cell_line'].unique().tolist()
     pdf_full = os.path.join(output_dir, filename)
     nb_plots = len(cell_lines)
     if nb_plots != 6: print(barcode + ": " + str(nb_plots) + " cell lines")
@@ -721,39 +763,21 @@ def get_counts_plate(
             if i == nb_plots: break
             if i >= len(cell_lines): break
             cell_line = cell_lines[i]
-            qq = cell_line_col_design + " == '" + cell_line + "'" + " & " + barcode_col_design + " == '" + barcode + "'" 
+            qq = 'cell_line' + " == '" + cell_line + "'" + " & " + 'barcode' + " == '" + barcode + "'" 
             df_small = df.query(qq)
             if df_small.shape[0] == 0: break
             wells = df_small['well'].unique().tolist()
             if n_wells is not None: wells = wells[0:n_wells]
             ax = axs[row,col]
             print("\t"+cell_line)
-            ### initialize a list and dict for outputs from ldr gating function
-            df_list = []
-            #props_dict = {}
-            #well_files = [s for s in os.listdir(plate_data_dir) if s.endswith(well_file_ending)]
-            ### read into a data frame with
-            #df_plate_data = read_plate_data(barcode, well_file_ending)
-            for well in wells:
-                #qq2 = well_col + " == " + "'" + well + "'"
-                #df_well = df_small.query(qq2)
-                #well_file = [f for f in well_files if well in f]
-                #df_well = pd.read_csv(well_file[0])
-                df_well = read_well_data(barcode, well, plate_data_dir,
-                                         ldr_col_data = ldr_col_data,
-                                         well_col_data = well_col_data,
-                                         dna_col_data = dna_col_data)
-                if df_well.shape[0] == 0: break
-                ldrint = df_well['ldr'].copy()
+            if gating_method == "combined":
+                group_df = plate_df[plate_df['well'].isin(wells)]
+                ldrint = group_df['ldr'].copy()
                 ldrint = ldrint[ldrint > 0]
                 logint = np.log10(ldrint.copy())
                 logint = logint.dropna()
-                xmin_tmp = min(logint)
-                xmax_tmp = max(logint)
-                xmin = min(xmin_tmp, xmin)
-                xmax = max(xmax_tmp, xmax)
-                sns.kdeplot(logint, ax=ax, alpha=0.25, bw_adjust=smoothing).set_title(cell_line)
-                if add_ldr_line or add_median_ldr_line:
+                logint_group = logint
+                if add_ldr_line or add_consensus_ldr_line:
                     if not new_gating_algorithm:
                         ldr_gates, ldr_lims = get_ldrgates(np.array([10**x for x in logint]),
                                                                    peak_loc = peak_loc)
@@ -770,7 +794,54 @@ def get_counts_plate(
                                         silent=silent,
                                         return_peaks_only=return_peaks_only,
                                         suppress_fig=True)
-                        ldr_cutoff = pdict['ldr_cutoff']
+                        ldr_cutoff_combined = pdict['ldr_cutoff']
+                
+            ### initialize a list and dict for outputs from ldr gating function
+            df_list = []
+            #props_dict = {}
+            #well_files = [s for s in os.listdir(plate_data_dir) if s.endswith(well_file_ending)]
+            ### read into a data frame with
+            #df_plate_data = read_plate_data(barcode, well_file_ending)
+            for well in wells:
+                qq2 = "well == " + "'" + well + "'"
+                df_well = plate_df.query(qq2)
+                #well_file = [f for f in well_files if well in f]
+                #df_well = pd.read_csv(well_file[0])
+                # df_well = read_well_data(barcode, well, plate_data_dir,
+                #                          ldr_col_data = ldr_col_data,
+                #                          well_col_data = well_col_data,
+                #                          dna_col_data = dna_col_data)
+                if df_well.shape[0] == 0: break
+                ldrint = df_well['ldr'].copy()
+                ldrint = ldrint[ldrint > 0]
+                logint = np.log10(ldrint.copy())
+                logint = logint.dropna()
+                xmin_tmp = min(logint)
+                xmax_tmp = max(logint)
+                xmin = min(xmin_tmp, xmin)
+                xmax = max(xmax_tmp, xmax)
+                sns.kdeplot(logint, ax=ax, alpha=0.25, bw_adjust=smoothing).set_title(cell_line)
+                if add_ldr_line or add_consensus_ldr_line:
+                    if not new_gating_algorithm:
+                        ldr_gates, ldr_lims = get_ldrgates(np.array([10**x for x in logint]),
+                                                                   peak_loc = peak_loc)
+                        ldr_cutoff = ldr_gates[1]
+                        ldr_cutoffs.append(ldr_cutoff)
+                    else:
+                        if gating_method == 'median':
+                            pdict = get_ldrgates_new(ldrint, 
+                                            smoothing=smoothing,
+                                            show=True,
+                                            first_peak_min=first_peak_min,
+                                            min_prominence=min_prominence, 
+                                            min_peak_height=min_peak_height, min_peak_distance=min_peak_distance,
+                                            single_peak_cutoff=single_peak_cutoff,
+                                            silent=silent,
+                                            return_peaks_only=return_peaks_only,
+                                            suppress_fig=True)
+                            ldr_cutoff = pdict['ldr_cutoff']
+                        else:
+                            ldr_cutoff = ldr_cutoff_combined
                         ldr_cutoffs.append(ldr_cutoff)
                         ### construct results data frame
                         pdict['well'] = well
@@ -781,21 +852,21 @@ def get_counts_plate(
                         #             'peak1_height', 'peak2_height','shelf','method_used', 'ldr_cutoff_mixture', 
                         #         'ldr_cutoff_valley', 'ldr_cutoff_middle']
                         dd = {k:v for (k,v) in pdict.items() if k in cols}
-                        for col in metadata_cols:
-                            len1 = df_well[col].unique().size
-                            if len1 == 1:
-                                dd[col] = df_well[col].unique()[0]
-                            elif len1 < 1:
-                                dd[col] = None
-                                msg = "Warning for barcode: " + barcode + " well: " + well
-                                msg = msg + "no values for metadata column " + "'" + col + "'"
-                                warnings.warn(msg)
-                            elif len1 > 1:
-                                dd[col] = None
-                                msg = "Warning for barcode: " + barcode + " well: " + well
-                                msg = msg + "multiple value for metadata column " + "'" + col + "'"
-                                msg = msg + ' '.join(str(x) for x in df_well[col].unique())
-                                warnings.warn(msg)
+                        # for col in metadata_cols:
+                        #     len1 = df_well[col].unique().size
+                        #     if len1 == 1:
+                        #         dd[col] = df_well[col].unique()[0]
+                        #     elif len1 < 1:
+                        #         dd[col] = None
+                        #         msg = "Warning for barcode: " + barcode + " well: " + well
+                        #         msg = msg + "no values for metadata column " + "'" + col + "'"
+                        #         warnings.warn(msg)
+                        #     elif len1 > 1:
+                        #         dd[col] = None
+                        #         msg = "Warning for barcode: " + barcode + " well: " + well
+                        #         msg = msg + "multiple value for metadata column " + "'" + col + "'"
+                        #         msg = msg + ' '.join(str(x) for x in df_well[col].unique())
+                        #         warnings.warn(msg)
                         #pdict2 = {k:v for (k,v) in pdict.items() if not k in cols}
                         ### dataframe with ldr cutoff (one row)
                         tmp_df = pd.DataFrame(data=dd, index=[0])
@@ -834,7 +905,10 @@ def get_counts_plate(
             res_df['ldr_cutoff_min'] = ldr_cutoff_min
             res_df['ldr_cutoff_max'] = ldr_cutoff_max
             res_df['ldr_cutoff_final'] = np.clip(res_df['ldr_cutoff'], ldr_cutoff_min, ldr_cutoff_max)
+            res_df = pd.merge(df_small, res_df, on=['barcode','well','cell_line'], how='right')
             df_list_full.append(res_df)
+            if gating_method == 'combined':
+                sns.kdeplot(logint_group, ax=ax, alpha=1, bw_adjust=smoothing, color = 'black', linewidth=3).set_title(cell_line)
             #sns.kdeplot(logint_all, ax=ax, color = "red").set_title(cell_line)
             #xmin = -2
             #xmax = 6
@@ -843,7 +917,7 @@ def get_counts_plate(
             x_ticks = np.arange(np.ceil(xmin), np.floor(xmax)+1)
             plt.xticks(x_ticks)
             ax.tick_params(labelbottom=True)
-            if add_median_ldr_line:
+            if add_consensus_ldr_line:
                 med_cutoff = np.median(ldr_cutoffs)
                 #print(med_cutoff)
                 ax.axvline(x=med_cutoff, ymin=0, ymax=1, color = "orange")
@@ -863,7 +937,7 @@ def get_counts_plate(
     if not testing:
         cell_count_cols = ['cell_count', 'cell_count__dead', 'cell_count__total']
         phase_cols = ['alive', 'alive_subg1', 'alive_beyondg2', 'dead_ldrpos', 'dead_subg1']
-        cols = ['well', 'barcode', 'cell_line'] + metadata_cols + ['ldr_cutoff_final'] + phase_cols + cell_count_cols
+        cols = ['well', 'barcode', 'cell_line'] + metadata_cols + ['ldr_cutoff_final'] + phase_cols + cell_count_cols + extra_cols
         res_df_full = res_df_full.filter(items = cols)
         res_df_full.rename(columns={'ldr_cutoff_final':'ldr_cutoff'}, inplace=True)
     csv_filename = barcode + ".csv"
@@ -1344,6 +1418,56 @@ def read_well_data(barcode, well,
     df = pd.read_csv(ff)
     df = df.rename(columns=col_dict)
     return(df)
+
+def read_plate_data(
+        barcode,
+        one_file_per_plate=False,
+        skipRows=True,
+        plate_data_dir = None,
+        ldr_col_data = 'ldrint',
+        well_col_data = 'Well Name',
+        dna_col_data = 'Cell: DNAcontent (DD-bckgrnd)'
+        ):
+    if one_file_per_plate:
+        if plate_data_dir is None:
+            plate_data_dir = ""
+        f = barcode + '.txt'
+        ff = os.path.join(plate_data_dir, f)
+        if not os.path.exists(ff):
+            raise ValueError('Error: file ' + ff + ' does not exist')
+            #print('Error: file ' + ff + ' does not exist')
+            #return()
+        if skipRows:
+            df = pd.read_table(ff,skiprows=7)
+        else:
+            df = pd.read_table(ff)
+    else:
+        if plate_data_dir is None:
+            plate_data_dir = barcode
+        if not os.path.exists(plate_data_dir):
+            raise ValueError('Well data files not found in directory: ' + plate_data_dir)
+            #print('Well data files not found in directory: ' + plate_data_dir)
+        well_files = glob.glob("*.csv", root_dir = plate_data_dir)
+        print(str(len(well_files)) + ' files found for plate ' + barcode)
+        df_list = []
+        for f in well_files:
+            df_tmp = pd.read_csv(os.path.join(plate_data_dir, f))
+            df_list.append(df_tmp)
+        df = pd.concat(df_list)
+    if not ldr_col_data in df.columns:
+        raise ValueError('Error: LDR column not found')
+        #print('Error: LDR column not found')
+        #return(df)
+    col_dict = {}
+    col_dict[ldr_col_data] = 'ldr'
+    col_dict[well_col_data] = 'well'
+    col_dict[dna_col_data] = 'dna'
+    df = df.rename(columns=col_dict)
+    df['barcode'] = barcode
+    return(df)
+    
+    
+    
 
 ## Re-name columns of well-level dataframe for LDR, DNA, EDU, etc.
 ## input: original data frame read from csv
