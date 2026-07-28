@@ -594,6 +594,7 @@ def get_g1_dna_peak(log_dna, x_dna, log_edu, edu_shift,
             dna_g1_loc = np.min(dna_g1_loc)
     if not np.any(dna_g1_loc):
         dna_g1_loc = np.nanmin(phase_candidates[:, 0] - np.log10(1.2))
+    dna_g1_loc = dna_g1_loc.item()
 
     if ax is not None:
         ax.plot(x_dna, f_dna)
@@ -1078,13 +1079,14 @@ def evaluate_cell_cycle_phase(log_dna, dna_gates, x_dna,
                 _, dna_loc, _ = findpeaks(
                     smooth.smooth(f_dna, 3 * nsmooth).tolist(),
                     npeaks=1)
+                dna_loc = dna_loc.item()
                 dna_peaks[ig-1] = x_dna[dna_loc]
 
                 f_edu = get_kde(log_edu[cell_id == ig], px_edu)
                 _, edu_loc, _ = findpeaks(
                     smooth.smooth(f_edu, 3 * nsmooth).tolist(),
                     npeaks=1)
-                edu_loc = int(edu_loc)
+                edu_loc = edu_loc.item()
                 edu_peaks[ig-1] = px_edu[edu_loc]
             else:
                 dna_peaks[ig-1] = np.mean(dna_gates[ig-1:2])
